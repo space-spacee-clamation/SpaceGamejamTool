@@ -5,19 +5,23 @@ using UnityEngine;
 using Random = UnityEngine.Random;
 namespace Space.EventFramework.Test
 {
-    [RequireComponent(typeof(EventSubscribeComponent))]
+    [RequireComponent(typeof(IEventComponent))]
     public class SimpleUniEventTest : MonoBehaviour
     {
-        private EventSubscribeComponent _eventSubscribeComponent;
+        private int test_a;
+        private IEventComponent _eventSubscribeComponent;
         private void Start()
         {
-            _eventSubscribeComponent=GetComponent<EventSubscribeComponent>();
+            _eventSubscribeComponent=GetComponent<IEventComponent>();
             _eventSubscribeComponent.Subscribe(
                 (in TimerEvent data) => 
             {
                 if(data.Sender==gameObject)
                 {
-                    Debug.Log(data.Sender.name+" :  "+(data.Timer.Minute+":"+data.Timer.Second));
+                    for (int i = 0; i < 100; i++)
+                    {
+                        test_a = i;
+                    }
                 }
             });
             _eventSubscribeComponent.Subscribe(

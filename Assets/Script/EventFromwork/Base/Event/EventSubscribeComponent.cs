@@ -4,12 +4,20 @@ using Space.EventFramework.BaseEvent;
 using UnityEngine;
 namespace Space.EventFramework
 {
+    
+    public interface IEventComponent
+    {
+         void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
+         public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
+         public void Clear();
+         public void Publish<T>(in T data) where T : IEventData;
+    }
     /// <summary>
-    /// 物体上绑定的事件注册者
     /// 实体通过这个组件去注册事件而不是直接调用bus
-    /// 注意 :  如果没有绑定此组件就不会调用销毁的事件，可能需要手动添加
+    /// 完全脱离unity生命周期,如果是生命周期相关请看
+    /// MonoEventSubComponent
     /// </summary>
-    public  class EventSubscribeComponent : MonoBehaviour
+    public  class EventSubscribeComponent  : IEventComponent
     {
         /// <summary>
         /// 存储接口
@@ -66,16 +74,7 @@ namespace Space.EventFramework
         /// 物体的事件
         /// </summary>
         private Dictionary<Type,IEventSubscriber> _eventSubscribers=new Dictionary<Type, IEventSubscriber>();
-        protected void OnEnable()
-        {
-            // 自动绑定生命周期事件
-            EventBus.Subscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
-        }
-        private void OnDestroy()
-        {
-            EventBus.Publish(new GameObjectDestroyedEvent(gameObject) );
-            EventBus.Unsubscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
-        }
+
         public void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData
         {
             //TODO: 加入debug模式，可以对当个物体的事件出入进行debug
@@ -86,20 +85,23 @@ namespace Space.EventFramework
                ( _eventSubscribers[typeof(T)]as EventSubscriber<T>)?.Subscribe(handler);
             }
         }
-        private void OnOwnerDestroyed(in GameObjectDestroyedEvent e)
+        public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData
         {
-            if (e.ObjectInstance == gameObject)
-            {
-                foreach (var subscriber in _eventSubscribers.Values)
-                {
-                    // 自动解除注册
-                    UnregisterEventHandlers(subscriber);
-                }
-            }
+            if (!_eventSubscribers.ContainsKey(typeof(T)))
+                return;
+            ( _eventSubscribers[typeof(T)]as EventSubscriber<T>)?.UnSubscribe(handler);
         }
         private void UnregisterEventHandlers(IEventSubscriber subscriber)
         {
             subscriber.Clear();
+        }
+        public void Clear()
+        {
+            foreach (var subscriber in _eventSubscribers.Values)
+            {
+                // 自动解除注册
+                UnregisterEventHandlers(subscriber);
+            }
         }
         public void Publish<T>(in T data) where T : IEventData
         {
@@ -107,4 +109,5 @@ namespace Space.EventFramework
             EventBus.Publish(data);
         }
     }
+
 }
