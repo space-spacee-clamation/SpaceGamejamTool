@@ -1,4 +1,4 @@
-﻿namespace Script.GlobalInterface.Buff
+﻿namespace Script.GlobalInterface.BuffInterface
 {
     /// <summary>
     /// buff的上下分，buff通过这个来获得上下文信息

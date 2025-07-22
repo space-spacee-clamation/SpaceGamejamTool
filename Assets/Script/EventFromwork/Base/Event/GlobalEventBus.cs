@@ -1,6 +1,4 @@
-using System;
-using System.Collections.Generic;
-using Space.GlobalInterface;
+using Space.GlobalInterface.EventInterface;
 namespace  Space.EventFramework
 {
    

@@ -1,5 +1,5 @@
 ﻿using Space.EventFramework;
-namespace Space.GlobalInterface
+namespace Space.GlobalInterface.EventInterface
 {
     /// <summary>
     /// 使用delegate而不是直接用Action 是为了保证 in关键字

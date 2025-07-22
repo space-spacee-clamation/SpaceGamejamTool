@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-namespace Script.GlobalInterface.Buff
+namespace Script.GlobalInterface.BuffInterface
 {
     /// <summary>
     /// buff组件的接口，基础的一些函数

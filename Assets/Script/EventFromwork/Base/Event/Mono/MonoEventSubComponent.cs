@@ -1,6 +1,5 @@
-﻿using System;
-using Space.EventFramework.BaseEvent;
-using Space.GlobalInterface;
+﻿using Space.EventFramework.BaseEvent;
+using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Space.EventFramework
 {

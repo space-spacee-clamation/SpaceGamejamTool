@@ -1,4 +1,4 @@
-﻿namespace Script.GlobalInterface.Buff
+﻿namespace Script.GlobalInterface.BuffInterface
 {
     public interface IBuff
     {

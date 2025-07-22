@@ -1,5 +1,5 @@
 ﻿using Space.EventFramework;
-namespace Space.GlobalInterface
+namespace Space.GlobalInterface.EventInterface
 {
     /// <summary>
     /// 事件收发的接口

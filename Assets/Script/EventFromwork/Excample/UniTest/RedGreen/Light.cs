@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using Space.EventFramework;
-using Space.GlobalInterface;
+﻿using System.Collections.Generic;
+using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Script.EventFromwork.Excample.UniTest.RedGreen
 {

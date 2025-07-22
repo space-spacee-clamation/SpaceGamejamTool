@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Space.EventFramework.BaseEvent;
-using Space.GlobalInterface;
+using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Space.EventFramework
 {

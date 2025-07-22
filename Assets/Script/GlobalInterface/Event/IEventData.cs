@@ -1,4 +1,4 @@
-﻿namespace Space.GlobalInterface
+﻿namespace Space.GlobalInterface.EventInterface
 {
     /// <summary>
     /// 事件数据的标记接口

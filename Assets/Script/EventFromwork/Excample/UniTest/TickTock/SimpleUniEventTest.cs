@@ -1,7 +1,6 @@
 using System;
-using Space.EventFramework;
 using Space.EventFramework.BaseEvent;
-using Space.GlobalInterface;
+using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 using Random = UnityEngine.Random;
 namespace Script.EventFromwork.Excample.UniTest.Test
