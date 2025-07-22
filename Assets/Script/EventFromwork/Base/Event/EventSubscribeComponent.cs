@@ -34,7 +34,7 @@ namespace Space.EventFramework
         private IEventBus eventBus;
         public EventSubscribeComponent(IEventBus eventBus)
         {
-            
+            this.eventBus = eventBus;
         }
         /// <summary>
         /// 同事件总栈的处理方法

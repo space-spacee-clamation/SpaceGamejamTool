@@ -10,6 +10,7 @@ namespace Space.EventFramework.Test
     {
         private int test_a;
         private IEventComponent _eventSubscribeComponent;
+        public string massage;
         private void Start()
         {
             _eventSubscribeComponent=GetComponent<IEventComponent>();
@@ -18,10 +19,7 @@ namespace Space.EventFramework.Test
             {
                 if(data.Sender==gameObject)
                 {
-                    for (int i = 0; i < 100; i++)
-                    {
-                        test_a = i;
-                    }
+                    Debug.Log ($"{gameObject.name} 收到信息   来自 {data.Sender.name.ToString()} ");
                 }
             });
             _eventSubscribeComponent.Subscribe(
