@@ -8,7 +8,7 @@ namespace Space.EventFramework
         EventSubscribeComponent _eventSubscribeComponent;
         private void Awake()
         {
-            _eventSubscribeComponent =new EventSubscribeComponent();
+            _eventSubscribeComponent =new EventSubscribeComponent(GlobalEventBus.Instance);
         }
         protected void OnEnable()
         {

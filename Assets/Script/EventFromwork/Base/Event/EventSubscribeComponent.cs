@@ -29,6 +29,14 @@ namespace Space.EventFramework
             void Clear();
         }
         /// <summary>
+        /// 该组件绑定的转发器
+        /// </summary>
+        private IEventBus eventBus;
+        public EventSubscribeComponent(IEventBus eventBus)
+        {
+            
+        }
+        /// <summary>
         /// 同事件总栈的处理方法
         /// 使用内部类进行封装减少开销
         /// 存储所有这个物体的事件
@@ -53,19 +61,19 @@ namespace Space.EventFramework
             {
                 Handel += handler;
                 _counter++;
-                EventBus.Subscribe(handler);
+                _owner.eventBus.Subscribe(handler);
             }
             public void UnSubscribe(GameEventDelegate<T> handler)
             {
                 Handel -= handler;
                 _counter--;
-                EventBus.Unsubscribe(handler);
+                _owner.eventBus.Unsubscribe(handler);
                 if (_counter <= 0)
                     _owner.UnregisterEventHandlers(this);
             }
             public void Clear()
             {
-                EventBus.Unsubscribe(Handel);
+                _owner.eventBus.Unsubscribe(Handel);
                 Handel = null;
                 _counter = 0;
             }
@@ -106,7 +114,7 @@ namespace Space.EventFramework
         public void Publish<T>(in T data) where T : IEventData
         {
             //TODO: 加入debug模式，可以对当个物体的事件出入进行debug
-            EventBus.Publish(data);
+            eventBus.Publish(data);
         }
     }
 

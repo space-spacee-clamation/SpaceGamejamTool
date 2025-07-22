@@ -7,7 +7,7 @@ namespace Space.EventFramework.BaseEvent
     /// 表示物体已经被销毁，而不是去销毁某个物体
     /// 销毁物体的话在其它逻辑组件里实现
     /// </summary>
-    public struct GameObjectDestroyedEvent : IEventData
+    public class GameObjectDestroyedEvent : IEventData
     {
         /// <summary>
         /// OnDestroy的物体
