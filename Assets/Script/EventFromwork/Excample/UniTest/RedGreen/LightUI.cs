@@ -1,15 +1,16 @@
 ﻿using System;
 using Space.EventFramework;
+using Space.GlobalInterface;
 using UnityEngine;
 namespace Script.EventFromwork.Excample.UniTest.RedGreen
 {
-    [RequireComponent(typeof(MonoEventSubComponent))]
+    [RequireComponent(typeof(IEventComponent))]
     public class LightUI : MonoBehaviour
     {
         [SerializeField] GameObject greenLight,radLight;
         public void Start()
         {
-            GetComponent<MonoEventSubComponent>().Subscribe<LightChangeEvent>(ChangeColor);
+            GetComponent<IEventComponent>().Subscribe<LightChangeEvent>(ChangeColor);
         }
         private void ChangeColor(in LightChangeEvent data)
         {

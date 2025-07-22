@@ -1,4 +1,5 @@
 ﻿using System;
+using Space.GlobalInterface;
 using UnityEngine;
 namespace Space.EventFramework.BaseEvent
 {

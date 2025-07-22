@@ -1,17 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using Space.EventFramework.BaseEvent;
+using Space.GlobalInterface;
 using UnityEngine;
 namespace Space.EventFramework
 {
     
-    public interface IEventComponent
-    {
-         void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
-         public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
-         public void Clear();
-         public void Publish<T>(in T data) where T : IEventData;
-    }
+
     /// <summary>
     /// 实体通过这个组件去注册事件而不是直接调用bus
     /// 完全脱离unity生命周期,如果是生命周期相关请看
@@ -51,6 +46,9 @@ namespace Space.EventFramework
             /// 事件计数器，类似智能指针，没有事件自动销毁
             /// </summary>
             private int _counter=0;
+            /// <summary>
+            /// 都private的内部类了不写接口应该没问题吧😋
+            /// </summary>
             private EventSubscribeComponent _owner;
             public EventSubscriber(EventSubscribeComponent owner,GameEventDelegate<T> handler)
             {

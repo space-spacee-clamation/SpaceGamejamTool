@@ -1,9 +1,10 @@
 using System;
 using Space.EventFramework;
 using Space.EventFramework.BaseEvent;
+using Space.GlobalInterface;
 using UnityEngine;
 using Random = UnityEngine.Random;
-namespace Space.EventFramework.Test
+namespace Script.EventFromwork.Excample.UniTest.Test
 {
     [RequireComponent(typeof(IEventComponent))]
     public class SimpleUniEventTest : MonoBehaviour
