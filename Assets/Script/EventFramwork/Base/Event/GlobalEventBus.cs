@@ -1,3 +1,4 @@
+using Script;
 using Space.GlobalInterface.EventInterface;
 namespace  Space.EventFramework
 {
@@ -7,6 +8,6 @@ namespace  Space.EventFramework
     /// </summary>
     public static class GlobalEventBus
     {
-        public static IEventBus Instance = new EventBus();
+        public static IEventBus Instance = FrameworkFactory.GetInstance<IEventBus>();
     }
 }

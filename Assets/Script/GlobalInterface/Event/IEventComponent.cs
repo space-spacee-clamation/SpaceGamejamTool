@@ -12,6 +12,7 @@ namespace Space.GlobalInterface.EventInterface
     /// </summary>
     public interface IEventComponent
     {
+        void BindBus(IEventBus eventBus);
         void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
         public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
         public void Clear();

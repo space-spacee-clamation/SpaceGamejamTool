@@ -1,14 +1,16 @@
-﻿using Space.EventFramework.BaseEvent;
+﻿using Script;
+using Space.EventFramework.BaseEvent;
 using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Space.EventFramework
 {
-    public class MonoEventSubComponent : MonoBehaviour , IEventComponent
+    public class MonoEventSubComponent : MonoBehaviour
     {
-        EventSubscribeComponent _eventSubscribeComponent;
+        IEventComponent _eventSubscribeComponent;
         private void Awake()
         {
-            _eventSubscribeComponent =new EventSubscribeComponent(GlobalEventBus.Instance);
+            _eventSubscribeComponent =FrameworkFactory.GetInstance<IEventComponent>();
+            _eventSubscribeComponent.BindBus(GlobalEventBus.Instance);
         }
         protected void OnEnable()
         {

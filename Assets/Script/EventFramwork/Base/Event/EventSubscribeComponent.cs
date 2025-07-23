@@ -26,7 +26,10 @@ namespace Space.EventFramework
         /// 该组件绑定的转发器
         /// </summary>
         private IEventBus eventBus;
-        public EventSubscribeComponent(IEventBus eventBus)
+        /// <summary>
+        /// 绑定转发器
+        /// </summary>
+        public void BindBus(IEventBus eventBus)
         {
             this.eventBus = eventBus;
         }
