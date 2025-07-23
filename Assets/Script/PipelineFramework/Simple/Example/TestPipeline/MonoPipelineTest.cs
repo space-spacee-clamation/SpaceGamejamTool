@@ -11,10 +11,10 @@ namespace Space.PipelineFramework.Simple.Example.Test
         {
             IPipelineFactory factory = GlobalPipelineStageFactory.Instance;
             pipeline = FrameworkFactory.GetInstance<IPipeline>();
-            pipeline.AddStage(factory.CreatePipelineStage("Example.Test.TestStage"));
-            pipeline.AddStage(factory.CreatePipelineStage("Example.Test.TestStage"));
-            pipeline.AddStage(factory.CreatePipelineStage("Example.Test.TestStage"));
-            pipeline.AddStage(factory.CreatePipelineStage("Example.Test.TestStage"));
+            pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+            pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+            pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+            pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
             pipelineContext = FrameworkFactory.GetInstance<IPipelineContext>();
         }
 
@@ -26,14 +26,8 @@ namespace Space.PipelineFramework.Simple.Example.Test
             timer-=Time.deltaTime;
             if (timer<0)
             {
-                if (pipelineContext.TryGetSharedData<TestContest>("Test",out TestContest value))
-                {
-                    value.massage = $"{count++}次管道测试";
-                }
-                else
-                {
-                    pipelineContext.SetSharedData("Test",new TestContest(){ massage = $"{count++}次管道测试"});
-                }
+                pipelineContext.Clear();
+                pipelineContext.SetSharedData("TestCount", $"{count++}次管道测试");
                 pipeline.Execute(pipelineContext);
                 timer = 3f;
             }

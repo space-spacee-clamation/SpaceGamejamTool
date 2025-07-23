@@ -8,17 +8,19 @@ namespace Space.PipelineFramework.Simple.Example.Test
         public string massage;
         public  int index;
     }
-        [PipelineStage("Example.Test.TestStage",typeof(TestPipelineStage))]
+        [PipelineStage("Example/Test/TestStage",typeof(TestPipelineStage))]
     public class TestPipelineStage : APipelineStage<TestPipelineStage>
     {
         public int Priority {
             get;
         }
+        private int index=0;
         public override void Execute(IPipelineContext context)
         {
-            TestContest res= context.GetSharedData("Test") as TestContest;
-            Debug.Log($"{res.index} : {res.massage}");
-            res.index++;
+            if (context.TryGetSharedData("ContextIndex", out index)) ;
+            string res= context.GetSharedData("TestCount" )as string;
+            Debug.Log($"{index}: {res}");
+            context.SetSharedData("ContextIndex",++index);
         }
     }
 }

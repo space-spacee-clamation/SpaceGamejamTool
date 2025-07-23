@@ -57,5 +57,10 @@ namespace Space.PipelineFramework.Simple
         {
             return pipelineMeta[name].Clone();
         }
+        public IPipelineStage CreatePipelineStage(string name, params object[] pipelineParams)
+        {
+            var temp= pipelineMeta[name].Clone();
+            return temp.SetParams(pipelineParams);
+        }
     }
 }

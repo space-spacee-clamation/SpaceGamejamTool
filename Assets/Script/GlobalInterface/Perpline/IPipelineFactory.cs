@@ -11,5 +11,6 @@
         /// </summary>
         /// <param name="name">名字</param>
         public IPipelineStage CreatePipelineStage(string name);
+        public IPipelineStage CreatePipelineStage(string name, params object[] pipelineParams);
     }
 }

@@ -7,6 +7,8 @@
     public interface IPipelineStage
     {
         public int Priority { get; }
+        
+        public IPipelineStage SetParams(params object[] parameters);
         /// <summary>
         /// 触发管道
         /// </summary>

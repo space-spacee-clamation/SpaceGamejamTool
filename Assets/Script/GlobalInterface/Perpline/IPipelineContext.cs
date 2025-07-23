@@ -7,20 +7,29 @@
     {
         /// <summary>
         /// 共享数据存储
+        /// 
         /// </summary>
-        /// <param name="key"></param>
         object GetSharedData(string key);
         /// <summary>
         /// 数据存储
+        /// !!!会强制覆盖现有data
         /// </summary>
         void SetSharedData(string key, object value);
-        
+        /// <summary>
+        /// 尝试获得某个共享数据
+        /// </summary>
+        /// <param name="key">关键字</param>
+        /// <param name="value">值</param>
         bool TryGetSharedData(string key, out object value);
-        
+        /// <summary>
+        /// 尝试获得数据
+        /// </summary>
         bool TryGetSharedData<T>(string key, out T value);  
-        
         T  GetSharedData<T>(string key);
         
+        /// <summary>
+        /// 设置  默认不覆盖而是返回
+        /// </summary>
         bool  TrySetSharedData(string key, object value);
         
         bool ContainsKey(string key);

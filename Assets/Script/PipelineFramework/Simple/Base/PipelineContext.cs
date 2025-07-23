@@ -21,7 +21,14 @@ namespace Space.PipelineFramework.Simple
         }
         public void SetSharedData(string key, object value)
         {
-            parameters.Add(key,value);
+            if (!parameters.ContainsKey(key))
+            {
+                parameters.Add(key,value);
+            }
+            else
+            {
+                parameters[key] = value;
+            }
         }
         public bool TryGetSharedData(string key, out object value)
         {
