@@ -9,6 +9,7 @@ namespace Space
     /// <summary>
     /// 这个静态的接口工厂可以获得GlobalInterface(标记接口除外(数据相关的接口))对应的接口的实例
     /// 具体的类型由静态字典定义
+    /// TODO: 暂时是静态工厂，后期考虑转换成可配置的工厂
     /// </summary>
     public static class FrameworkFactory
     {
@@ -18,7 +19,7 @@ namespace Space
             {typeof(IEventComponent),()=>new EventSubscribeComponent()},
             {typeof(IPipelineContext),()=>new PipelineContext()},
             {typeof(IPipeline),()=>new Pipeline()},
-            {typeof(IPipelineFactory),()=>new ReflectionPipeLineFactory()}
+            {typeof(IPipelineFactory),()=>new DictionaryPipelineFactory()}
         };
         public static T GetInstance<T>() 
         {

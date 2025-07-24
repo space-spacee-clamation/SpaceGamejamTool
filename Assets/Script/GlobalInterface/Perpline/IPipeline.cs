@@ -7,7 +7,17 @@
     /// </summary>
     public interface IPipeline
     {
+        /// <summary>
+        /// 增加管道的组件
+        /// 如果没有传入优先级会使用默认优先级
+        /// </summary>
         public void AddStage(IPipelineStage stage);
+        /// <summary>
+        /// 增加管道的组件
+        /// 如果没有传入优先级会使用默认优先级
+        /// </summary>
+        public void AddStage(IPipelineStage stage,int priority);
+
         public void RemoveStage(IPipelineStage stage);
         /// <summary>
         /// </summary>

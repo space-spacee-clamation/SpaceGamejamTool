@@ -7,7 +7,6 @@
     {
         /// <summary>
         /// 共享数据存储
-        /// 
         /// </summary>
         object GetSharedData(string key);
         /// <summary>

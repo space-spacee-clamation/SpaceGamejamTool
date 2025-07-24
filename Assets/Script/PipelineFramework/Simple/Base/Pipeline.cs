@@ -11,7 +11,11 @@ namespace Space.PipelineFramework.Simple
         SortedList<int , IPipelineStage> pipelineStages = new SortedList<int , IPipelineStage>();
         public void AddStage(IPipelineStage stage)
         {
-            pipelineStages.Add(stage.Priority, stage);
+            pipelineStages.Add(stage.DefaultPriority, stage);
+        }
+        public void AddStage(IPipelineStage stage, int priority)
+        {
+            pipelineStages.Add(priority, stage);
         }
         public void RemoveStage(IPipelineStage stage)
         {

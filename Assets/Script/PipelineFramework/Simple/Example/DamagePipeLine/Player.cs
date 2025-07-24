@@ -6,13 +6,13 @@ namespace Space.PipelineFramework.Simple.Example.DamagePipeLine
     /// </summary>
     public class Player
     {
-        public int Level;
+        public int Level=1;
         /// <summary>
         /// 直接简单实现了
         /// </summary>
-        public int GetSkillDamage(int skillID)
+        public int GetSkillDamage()
         {
-            return (Level + skillID) * 3;
+            return (Level + Random.Range(1,10)) * 3;
         }
         public void costDamage(int damage)
         {

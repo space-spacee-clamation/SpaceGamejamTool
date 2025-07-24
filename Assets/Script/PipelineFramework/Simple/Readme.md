@@ -7,7 +7,9 @@
    - APipelineStage 抽象的管道组件的基类，实际上只是代替实现了一个克隆效果，克隆是为了工厂使用享元模式创造实例
    - Pipeline 管道，负责把Stage组装起来
    - PipelineContext 管道上下文，实现IPipelineContext接口
-   - ReflectionPipeLineFactory 依照反射实现的管道工厂
+   - Factory 这个代码实现了两种工厂，一个依赖特征加反射，一个依赖配置字段，实际上都是配置字段罢了()，如果需要更换工厂，只需要更换FramworkFactory中对应的实例即可，这两个工厂也体现了该框架的可替换性
+     - ReflectionPipeLineFactory 依照反射实现的管道工厂
+     - DictionaryPipelineFactory 依赖配置字段实现工厂，字段格式是("索引的key","反射使用的全名")
  - Example
    - TestPipeline 一个纯测试的管道，无任何实际意义
    - DamagePipeLine 一个伤害计算管道的例子
