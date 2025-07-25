@@ -25,7 +25,7 @@
         /// </summary>
         bool TryGetSharedData<T>(string key, out T value);  
         T  GetSharedData<T>(string key);
-        
+
         /// <summary>
         /// 设置  默认不覆盖而是返回
         /// </summary>
