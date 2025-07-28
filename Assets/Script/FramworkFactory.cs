@@ -17,9 +17,7 @@ namespace Space
         {
             {typeof(IEventBus),()=>new EventBus()},
             {typeof(IEventComponent),()=>new EventSubscribeComponent()},
-            {typeof(IPipelineContext),()=>new PipelineContext()},
-            {typeof(IPipeline),()=>new Pipeline()},
-            {typeof(IPipelineFactory),()=>new DictionaryPipelineFactory()}
+            {typeof(IPipelineStageFactory),()=>new DictionaryPipelineStageFactory()},
         };
         public static T GetInstance<T>() 
         {

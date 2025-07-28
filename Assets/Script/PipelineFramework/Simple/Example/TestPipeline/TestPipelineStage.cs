@@ -3,24 +3,24 @@ using UnityEngine;
 namespace Space.PipelineFramework.Simple.Example.Test
 {
 
-    public class TestContest
+    public class TestContest : IPipelineContext
     {
         public string massage;
         public  int index;
     }
-        [PipelineStage("Example/Test/TestStage",typeof(TestPipelineStage))]
-    public class TestPipelineStage : APipelineStage<TestPipelineStage>
+    public class TestPipelineStage : APipelineStage<TestPipelineStage,TestContest>
     {
         public int Priority {
             get;
         }
         private int index=0;
-        public override void Execute(IPipelineContext context)
+        public override void Execute(TestContest context)
         {
-            if (context.TryGetSharedData("ContextIndex", out index)) ;
-            string res= context.GetSharedData("TestCount" )as string;
+            index=context.index;
+            string res = context.massage;
             Debug.Log($"{index}: {res}");
-            context.SetSharedData("ContextIndex",++index);
+            index++;
+            context.index = index;
         }
     }
 }

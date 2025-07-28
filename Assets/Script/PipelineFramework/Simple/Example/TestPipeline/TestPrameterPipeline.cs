@@ -6,8 +6,7 @@ namespace Space.PipelineFramework.Simple.Example.Test
     /// 此处用了Attribute 可以通过ReflectionPipeLineFactory调用
     /// 也可也用DictionaryFactory 看喜好选择
     /// </summary>
-    [PipelineStage("Example/Test/TestParamsPipeline",typeof(TestPipelineStage))]
-    public class TestParamsPipeline : APipelineStage<TestParamsPipeline>
+    public class TestParamsPipeline : APipelineStage<TestParamsPipeline,TestContest>
     {
         private string addedMassage= "";
         public class TestParamsPipelineCreateInfo
@@ -15,7 +14,7 @@ namespace Space.PipelineFramework.Simple.Example.Test
             public int DefaultPriority;
             public string AddedMassage;
         }
-        public override IPipelineStage SetParams(params object[] parameters)
+        public override IPipelineStage<TestContest> SetParams(params object[] parameters)
         {
             TestParamsPipelineCreateInfo info= parameters[0]  as TestParamsPipelineCreateInfo;
             this.DefaultPriority= info.DefaultPriority;
@@ -23,12 +22,12 @@ namespace Space.PipelineFramework.Simple.Example.Test
             return base.SetParams(parameters);
         }
         private int index=0;
-        public override void Execute(IPipelineContext context)
+        public override void Execute(TestContest context)
         {
-            if (context.TryGetSharedData("ContextIndex", out index)) ;
-            string res= context.GetSharedData("TestCount" )as string;
+            index=context.index;
+            string res= context.massage;
             Debug.Log($"{index}: {res}  ---- {addedMassage}");
-            context.SetSharedData("ContextIndex",++index);
+            context.index++;
         }
     }
 }
