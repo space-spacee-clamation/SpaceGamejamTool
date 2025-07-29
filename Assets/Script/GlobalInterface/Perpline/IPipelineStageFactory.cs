@@ -17,5 +17,9 @@
         /// <param name="name">名字</param>
         public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name) where TContext : IPipelineContext;
         public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name, params object[] pipelineParams) where TContext : IPipelineContext;
+        public bool ContainPipelineStage(string name);
+        public bool ContainPipelineStage<TContext>(string name);
+        public bool TryCreatePipelineStage<TContext>(string name,out  IPipelineStage<TContext> result) where TContext : IPipelineContext;
+        public bool TryCreatePipelineStage<TContext>(string name,out  IPipelineStage<TContext> result, params object[] pipelineParams) where TContext : IPipelineContext;
     }
 }

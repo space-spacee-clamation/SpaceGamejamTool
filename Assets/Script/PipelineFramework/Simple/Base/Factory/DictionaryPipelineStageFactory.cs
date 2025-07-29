@@ -17,7 +17,7 @@ namespace Space.PipelineFramework.Simple
         /// </summary>
         private interface IsubPipelineFactory
         {
-            
+            public bool Contain(string name);
         }
         /// <summary>
         /// 实际上的子工厂
@@ -57,6 +57,10 @@ namespace Space.PipelineFramework.Simple
                 }
                 pipelines.Add(name, pipeline);
             }
+            public bool Contain(string name)
+            {
+                throw new NotImplementedException();
+            }
         }
         /// <summary>
         /// Type是管线计算变量的Type
@@ -87,6 +91,39 @@ namespace Space.PipelineFramework.Simple
                 return (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name, pipelineParams);
             }
             throw new NotSupportedException($" <{typeof(TContext)}> 类型未被注册");
+        }
+        public bool ContainPipelineStage(string name)
+        {
+            foreach (var subPipeline in subPipelines.Values)
+            {
+                if (subPipeline.Contain(name)) return true;
+            }
+            return false;
+        }
+        public bool ContainPipelineStage<TContext>(string name)
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory value) &&value.Contain(name)) return true;
+            return false;
+        }
+        public bool TryCreatePipelineStage<TContext>(string name, out IPipelineStage<TContext> result) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                result= (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name);
+                return true;
+            }
+            result= null;
+            return  false;
+        }
+        public bool TryCreatePipelineStage<TContext>(string name, out IPipelineStage<TContext> result, params object[] pipelineParams) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                result= (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name, pipelineParams);
+                return true;
+            }
+            result= null;
+            return  false;
         }
     }
 }
