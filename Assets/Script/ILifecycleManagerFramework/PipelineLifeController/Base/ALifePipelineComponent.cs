@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Space.GlobalInterface.Lifecycle;
 using Space.GlobalInterface.PipelineInterface;
 using Space.PipelineFramework.Simple;
@@ -30,13 +31,6 @@ namespace Space.LifeControllerFramework.PipelineLifeController
             DefaultPriority =(int) parameters[0];
             PhaseName = (string) parameters[1];
             return this;
-        }
-        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
-        {
-        }
-        public void Update(ILifecycleManager.UpdateContext context)
-        {
-            
         }
     }
 }

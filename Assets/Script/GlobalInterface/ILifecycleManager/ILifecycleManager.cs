@@ -44,11 +44,6 @@ namespace Space.GlobalInterface.Lifecycle
         /// <param name="PhaseName"></param>
           /// <param name="lifeState"></param>
         public void Unsubscribe(string PhaseName,ILifecycleSubscriber lifeState);
-        /// <summary>
-        /// 取消注册的生命周期组件
-        /// </summary>
-        /// <param name="lifeState">生命周期组件</param>
-        public void Unsubscribe(ILifecycleSubscriber lifeState);
         public void AddPhase(ILifecyclePhase lifePhase);
         public void RemovePhase(ILifecyclePhase lifePhase);
         /// <summary>

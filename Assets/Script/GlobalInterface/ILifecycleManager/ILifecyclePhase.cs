@@ -9,6 +9,6 @@
     public interface ILifecyclePhase
     {
         public string PhaseName { get; }
-        public void Update(ILifecycleManager.UpdateContext context);
+
     }
 }
