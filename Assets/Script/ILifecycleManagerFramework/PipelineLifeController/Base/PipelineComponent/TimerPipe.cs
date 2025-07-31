@@ -12,18 +12,46 @@ namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
     /// </summary>
     public class TimerPipe<T> : ALifePipelineComponent<TimerPipe<T>> where T : ILifecycleSubscriber
     {
-        private Action<T,LifecyclePipelineManager.LifecyclePipelineContext> handeler = null;
-        private float FixedTime;
+        /// <summary>
+        /// 使用委托含义更明确一点
+        /// </summary>
+       public delegate void TimerHandler<T>(T subscriber,LifecyclePipelineManager.LifecyclePipelineContext context,float fixedTime) ;
+       private  TimerHandler<T> handler;
+       private float FixedTime;
         float timerRem = 0;
+        
+        
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public TimerHandler<T> handeler ;
+            /// <param name="priority">优先级</param>
+            /// <param name="name">名字</param>
+            /// <param name="handler">处理器</param>
+            public PipeCreatInfo(int priority, string name,  TimerHandler<T> handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+            }
+        }
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            handler = parameters.handeler;
+            return this;
+        }
         /// <param name="parameters">
         /// 初始化参数
-        /// (int)优先级  (string)名字 (float)FixedTime ( Action<T,LifecyclePipelineContext>) 合规的接口处理器
+        /// (int)优先级  (string)名字 (float)FixedTime ( TimerHandler<T>) 合规的接口处理器
         /// </param>
         public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
         {
             FixedTime =(float) parameters[2] ;
            if(FixedTime<=0) throw new Exception("FixedTime is 0");
-            handeler = (Action<T,LifecyclePipelineManager.LifecyclePipelineContext>)parameters[3];
+            handler = (TimerHandler<T>)parameters[3];
             return base.SetParams(parameters);
         }
         public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
@@ -34,7 +62,7 @@ namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
                 List<ILifecycleSubscriber> resList= context.GetSubscribers(PhaseName);
                 foreach (var item in resList)
                 {
-                    if(item is T timer)handeler.Invoke(timer,context);
+                    if(item is T timer)handler.Invoke(timer,context,FixedTime);
                     else
                     {
                         Debug.Log($" <{item.GetType().FullName}> 尝试被注册进入 TimerPipe ,但是其没有实现 {typeof(T)} 接口");

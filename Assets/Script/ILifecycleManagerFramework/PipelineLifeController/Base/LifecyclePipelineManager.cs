@@ -101,7 +101,6 @@ namespace Space.LifeControllerFramework.PipelineLifeController
         {
             context.UnSubscribe(PhaseName, lifeState);
         }
-
         public void AddPhase(ILifecyclePhase lifePhase)
         {
             pipeline.AddStage(lifePhase as IPipelineStage<LifecyclePipelineContext>);

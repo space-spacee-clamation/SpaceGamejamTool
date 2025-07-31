@@ -21,7 +21,7 @@ namespace Space.LifeControllerFramework.PipelineLifeController
         /// <summary>
         /// 生命周期叫 Phase
         /// </summary>
-        public  string PhaseName { get; protected set; }
+        public  virtual string PhaseName { get; protected set; }
         /// <param name="parameters">
         /// 初始化参数
         /// (int)优先级  (string)名字

@@ -14,6 +14,27 @@ namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
     public class UpdatePipe<T> : ALifePipelineComponent<UpdatePipe<T>> where T : ILifecycleSubscriber
     {
         private Action<T,LifecyclePipelineManager.LifecyclePipelineContext> handler = null;
+
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handeler ;
+            public PipeCreatInfo(int priority, string name, Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+            }
+        }
+
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            handler = parameters.handeler;
+            return this;
+        }
         /// <param name="parameters">
         /// 初始化参数
         /// (int)优先级  (string)名字 ( Action<T,LifecyclePipelineContext>) 合规的接口处理器

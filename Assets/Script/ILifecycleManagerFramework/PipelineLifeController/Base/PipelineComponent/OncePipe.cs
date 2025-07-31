@@ -12,7 +12,7 @@ namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
         /// <summary>
         /// 额外包装，帮助简化创建
         /// </summary>
-        public struct CreatOncePipeInfo
+        public struct PipeCreatInfo
         {
             public int Priority;
             public string PipeName ;
@@ -20,14 +20,14 @@ namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
             /// <param name="priority">优先级</param>
             /// <param name="name">名字</param>
             /// <param name="handler">处理器</param>
-            public CreatOncePipeInfo(int priority, string name, Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handler)
+            public PipeCreatInfo(int priority, string name, Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handler)
             {
                 this.Priority = priority;
                 PipeName = name;
                 this.handeler = handler;
             }
         }
-        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in CreatOncePipeInfo parameters)
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
         {
             DefaultPriority=parameters.Priority;
             PhaseName = parameters.PipeName;

@@ -35,6 +35,6 @@ namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.CustomLif
     }
     public interface IGameBOOOOOM : ILifecycleSubscriber
     {
-        
+        public void Boooom();
     }
 }
