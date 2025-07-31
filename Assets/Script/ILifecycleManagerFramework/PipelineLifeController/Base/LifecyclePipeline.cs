@@ -15,7 +15,7 @@ namespace Space.LifeControllerFramework.PipelineLifeController
         /// </summary>
         public LifecyclePipeline()
         {
-            AddStage(new ApplySubscriberPipe().SetParams());
+            AddStage(new ApplySubscriberPipe().SetParams(10000));
         }
     }
 }

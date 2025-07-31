@@ -6,7 +6,6 @@ namespace Space.LifeControllerFramework.PipelineLifeController
 {
     public class LifecyclePipelineManager : ILifecycleManager
     {
-        private LifecyclePipeline pipeline;
         public class LifecyclePipelineContext : IPipelineContext
         {
             private Dictionary<string, List<ILifecycleSubscriber>> subscribers;
@@ -61,12 +60,13 @@ namespace Space.LifeControllerFramework.PipelineLifeController
             {
                 return subscribers.ContainsKey(PhaseName) ? subscribers[PhaseName] : null;
             }
+            object lockObject = new object();
             /// <summary>
             /// 调用该函数会应用添加和删除
             /// </summary>
             public void ApplySubscribers()
             {
-                lock (holdList)
+                lock (lockObject)
                 {
                     foreach (var litm in holdList)
                     {
@@ -82,6 +82,8 @@ namespace Space.LifeControllerFramework.PipelineLifeController
             }
         }
         
+                
+        private LifecyclePipeline pipeline;
         /// <summary>
         /// 生命周期管理上下文
         /// 负责存贮各种数据
@@ -109,7 +111,7 @@ namespace Space.LifeControllerFramework.PipelineLifeController
         {
             pipeline.RemoveStage(lifePhase as IPipelineStage<LifecyclePipelineContext>);
         }
-        public void Update(ILifecycleManager.UpdateContext context)
+        public void Update(in ILifecycleManager.UpdateContext context)
         {
             this.context.UpdateContext = context;
             pipeline.Execute(this.context);

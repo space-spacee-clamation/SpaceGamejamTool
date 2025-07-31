@@ -49,6 +49,6 @@ namespace Space.GlobalInterface.Lifecycle
         /// <summary>
         /// 外部调用接口
         /// </summary>
-        public void Update(UpdateContext context);
+        public void Update(in UpdateContext context);
     }
 }
