@@ -11,7 +11,7 @@ namespace Space.EventFramework
     /// 完全脱离unity生命周期,如果是生命周期相关请看
     /// MonoEventSubComponent
     /// </summary>
-    public  class EventSubscribeComponent  : IEventComponent
+    public  class TypeEventSubscribeComponent  : ITypeEventComponent
     {
         /// <summary>
         /// 存储接口
@@ -25,13 +25,13 @@ namespace Space.EventFramework
         /// <summary>
         /// 该组件绑定的转发器
         /// </summary>
-        private IEventBus eventBus;
+        private ITypeEventBus _typeEventBus;
         /// <summary>
         /// 绑定转发器
         /// </summary>
-        public void BindBus(IEventBus eventBus)
+        public void BindBus(ITypeEventBus typeEventBus)
         {
-            this.eventBus = eventBus;
+            this._typeEventBus = typeEventBus;
         }
         /// <summary>
         /// 同事件总栈的处理方法
@@ -51,8 +51,8 @@ namespace Space.EventFramework
             /// <summary>
             /// 都private的内部类了不写接口应该没问题吧😋
             /// </summary>
-            private EventSubscribeComponent _owner;
-            public EventSubscriber(EventSubscribeComponent owner,GameEventDelegate<T> handler)
+            private TypeEventSubscribeComponent _owner;
+            public EventSubscriber(TypeEventSubscribeComponent owner,GameEventDelegate<T> handler)
             {
                 _owner = owner;
                 Subscribe( handler);
@@ -61,19 +61,19 @@ namespace Space.EventFramework
             {
                 Handel += handler;
                 _counter++;
-                _owner.eventBus.Subscribe(handler);
+                _owner._typeEventBus.Subscribe(handler);
             }
             public void UnSubscribe(GameEventDelegate<T> handler)
             {
                 Handel -= handler;
                 _counter--;
-                _owner.eventBus.Unsubscribe(handler);
+                _owner._typeEventBus.Unsubscribe(handler);
                 if (_counter <= 0)
                     _owner.UnregisterEventHandlers(this);
             }
             public void Clear()
             {
-                _owner.eventBus.Unsubscribe(Handel);
+                _owner._typeEventBus.Unsubscribe(Handel);
                 Handel = null;
                 _counter = 0;
             }
@@ -114,7 +114,7 @@ namespace Space.EventFramework
         public void Publish<T>(in T data) where T : IEventData
         {
             //TODO: 加入debug模式，可以对当个物体的事件出入进行debug
-            eventBus.Publish(data);
+            _typeEventBus.Publish(data);
         }
     }
 

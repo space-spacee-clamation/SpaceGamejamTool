@@ -4,7 +4,7 @@ using Space.GlobalInterface;
 using Space.GlobalInterface.EventInterface;
 namespace Space.EventFramework
 {
- public class EventBus : IEventBus
+ public class TypeEventBus : ITypeEventBus
     {
         /// <summary>
         /// 只是方便存储的接口

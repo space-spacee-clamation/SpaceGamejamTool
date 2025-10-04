@@ -6,45 +6,45 @@ namespace Space.EventFramework
 {
     public class MonoEventSubComponent : MonoBehaviour
     {
-        IEventComponent _eventSubscribeComponent;
+        ITypeEventComponent _typeEventSubscribeComponent;
         private void Awake()
         {
-            _eventSubscribeComponent =FrameworkFactory.GetInstance<IEventComponent>();
-            _eventSubscribeComponent.BindBus(GlobalEventBus.Instance);
+            _typeEventSubscribeComponent =FrameworkFactory.GetInstance<ITypeEventComponent>();
+            _typeEventSubscribeComponent.BindBus(GlobalEventBus.Instance);
         }
         protected void OnEnable()
         {
             // 自动绑定生命周期事件
-            _eventSubscribeComponent.Subscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
+            _typeEventSubscribeComponent.Subscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
         }
         private void OnDestroy()
         {
-            _eventSubscribeComponent.Publish(new GameObjectDestroyedEvent(gameObject) );
-            _eventSubscribeComponent.UnSubscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
+            _typeEventSubscribeComponent.Publish(new GameObjectDestroyedEvent(gameObject) );
+            _typeEventSubscribeComponent.UnSubscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
         }
         
         private void OnOwnerDestroyed(in GameObjectDestroyedEvent e)
         {
             if (e.ObjectInstance == gameObject)
             {
-                _eventSubscribeComponent.Clear();
+                _typeEventSubscribeComponent.Clear();
             }
         }
         public void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData
         {
-            _eventSubscribeComponent.Subscribe( handler);
+            _typeEventSubscribeComponent.Subscribe( handler);
         }
         public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData
         {
-            _eventSubscribeComponent.UnSubscribe( handler);
+            _typeEventSubscribeComponent.UnSubscribe( handler);
         }
         public void Clear()
         {
-            _eventSubscribeComponent.Clear();
+            _typeEventSubscribeComponent.Clear();
         }
         public void Publish<T>(in T data) where T : IEventData
         {
-            _eventSubscribeComponent.Publish( data);
+            _typeEventSubscribeComponent.Publish( data);
         }
     }
 }

@@ -5,16 +5,16 @@ using UnityEngine;
 using Random = UnityEngine.Random;
 namespace Script.EventFromwork.Excample.UniTest.Test
 {
-    [RequireComponent(typeof(IEventComponent))]
+    [RequireComponent(typeof(ITypeEventComponent))]
     public class SimpleUniEventTest : MonoBehaviour
     {
         private int test_a;
-        private IEventComponent _eventSubscribeComponent;
+        private ITypeEventComponent _typeEventSubscribeComponent;
         public string massage;
         private void Start()
         {
-            _eventSubscribeComponent=GetComponent<IEventComponent>();
-            _eventSubscribeComponent.Subscribe(
+            _typeEventSubscribeComponent=GetComponent<ITypeEventComponent>();
+            _typeEventSubscribeComponent.Subscribe(
                 (in TimerEvent data) => 
             {
                 if(data.Sender==gameObject)
@@ -22,7 +22,7 @@ namespace Script.EventFromwork.Excample.UniTest.Test
                     Debug.Log ($"{gameObject.name} 收到信息   来自 {data.Sender.name.ToString()} ");
                 }
             });
-            _eventSubscribeComponent.Subscribe(
+            _typeEventSubscribeComponent.Subscribe(
                 (in GameObjectDestroyedEvent data) =>
             {
                 if (data.ObjectInstance==gameObject)
@@ -37,7 +37,7 @@ namespace Script.EventFromwork.Excample.UniTest.Test
         {
             if (timer<=0)
             {
-                _eventSubscribeComponent.Publish(new TimerEvent(gameObject));
+                _typeEventSubscribeComponent.Publish(new TimerEvent(gameObject));
                 timer=Random.Range(1.0f,1.5f);
             }
             timer-=Time.deltaTime;

@@ -3,13 +3,13 @@ using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Script.EventFromwork.Excample.UniTest.RedGreen
 {
-    [RequireComponent(typeof(IEventComponent))]
+    [RequireComponent(typeof(ITypeEventComponent))]
     public class LightUI : MonoBehaviour
     {
         [SerializeField] GameObject greenLight,radLight;
         public void Start()
         {
-            GetComponent<IEventComponent>().Subscribe<LightChangeEvent>(ChangeColor);
+            GetComponent<ITypeEventComponent>().Subscribe<LightChangeEvent>(ChangeColor);
         }
         private void ChangeColor(in LightChangeEvent data)
         {

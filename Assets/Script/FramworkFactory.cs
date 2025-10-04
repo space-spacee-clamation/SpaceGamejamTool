@@ -15,8 +15,8 @@ namespace Space
     {
         private static Dictionary<Type, Func<object>> factory = new Dictionary<Type, Func<object>>()
         {
-            {typeof(IEventBus),()=>new EventBus()},
-            {typeof(IEventComponent),()=>new EventSubscribeComponent()},
+            {typeof(ITypeEventBus),()=>new TypeEventBus()},
+            {typeof(ITypeEventComponent),()=>new TypeEventSubscribeComponent()},
             {typeof(IPipelineStageFactory),()=>new DictionaryPipelineStageFactory()},
         };
         public static T GetInstance<T>() 

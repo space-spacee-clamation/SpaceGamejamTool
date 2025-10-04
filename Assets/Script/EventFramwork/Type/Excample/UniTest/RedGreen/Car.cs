@@ -3,12 +3,12 @@ using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Script.EventFromwork.Excample.UniTest.RedGreen
 {
-    [RequireComponent(typeof(IEventComponent))]
+    [RequireComponent(typeof(ITypeEventComponent))]
     public class Car : MonoBehaviour
     {
         public void Start()
         {
-            GetComponent<IEventComponent>().Subscribe<LightChangeEvent>(OnChangeColor);
+            GetComponent<ITypeEventComponent>().Subscribe<LightChangeEvent>(OnChangeColor);
         }
         private void OnChangeColor(in LightChangeEvent data)
         {

@@ -8,6 +8,6 @@ namespace  Space.EventFramework
     /// </summary>
     public static class GlobalEventBus
     {
-        public static IEventBus Instance = FrameworkFactory.GetInstance<IEventBus>();
+        public static ITypeEventBus Instance = FrameworkFactory.GetInstance<ITypeEventBus>();
     }
 }

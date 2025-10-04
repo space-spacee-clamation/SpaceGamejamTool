@@ -3,7 +3,7 @@ using Space.GlobalInterface.EventInterface;
 using UnityEngine;
 namespace Script.EventFromwork.Excample.UniTest.RedGreen
 {
-    [RequireComponent(typeof(IEventComponent))]
+    [RequireComponent(typeof(ITypeEventComponent))]
     public class Light : MonoBehaviour
     {
         private float timer=0.0f;
@@ -13,10 +13,10 @@ namespace Script.EventFromwork.Excample.UniTest.RedGreen
         /// index =1 为红灯
         /// </summary>
         private int index = 0;
-        private IEventComponent _monoEventSubComponent;
+        private ITypeEventComponent _monoTypeEventSubComponent;
         private void Start()
         {
-            _monoEventSubComponent=GetComponent<IEventComponent>();
+            _monoTypeEventSubComponent=GetComponent<ITypeEventComponent>();
         }
         private void Update()
         {
@@ -25,7 +25,7 @@ namespace Script.EventFromwork.Excample.UniTest.RedGreen
             {
                 timer=cds[index];
                 index=(index+1)%2;
-                _monoEventSubComponent.Publish(new LightChangeEvent(index));
+                _monoTypeEventSubComponent.Publish(new LightChangeEvent(index));
             }
         }
     }
