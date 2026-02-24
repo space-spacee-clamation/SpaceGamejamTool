@@ -1,6 +1,6 @@
 namespace Space
 {
-    public class ATimeLine
+    public interface ITimeLineSource
     {
         
     }
