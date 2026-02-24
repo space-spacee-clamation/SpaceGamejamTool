@@ -1,7 +1,0 @@
-namespace Space
-{
-    public class ATimeLine
-    {
-        
-    }
-}

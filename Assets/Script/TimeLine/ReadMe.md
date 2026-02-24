@@ -17,3 +17,4 @@ timeline依照复杂度有不同的逻辑，但是都是相当于只是把对应
 后续可以往这个方向重构看看
 
 timeline的命令执行应该有一套专门的执行器，我把它作为轨道抽象，类似修改position应该有一个PositionTrack 修改rotation有一个rotationTrack这样子(只是举例) 同时执行器应该是调用对应组件的接口，而不是组件， 例如PositionTrack就可以有一个IPositionTrackAble的接口给外部提供调用，具体的赋值逻辑在对应类内部实现而不是执行器实现，执行器只是给上级调用和做参数初始化和传递使用
+

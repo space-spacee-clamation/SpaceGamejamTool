@@ -1,0 +1,90 @@
+# 顶层配置文件，告诉编辑器不要再往上级目录寻找配置
+root = true
+
+# ==========================================
+# 1. 全局跨语言基础规范 (人类与 Agent 的基础共识)
+# ==========================================
+[*]
+# 统一字符集，防止不同语言系统的乱码
+charset = utf-8
+# 统一缩进风格为空格 (比 Tab 更容易在不同工具中保持一致的宽度)
+indent_style = space
+indent_size = 4
+# 强制使用 LF (Unix) 换行符，这是终结 Git 换行符冲突的最强武器
+end_of_line = lf
+# 自动删除行尾多余的空格，减少无意义的 Git Diff
+trim_trailing_whitespace = true
+# 文件末尾强制保留一个空行 (POSIX 标准，很多底层工具依赖此规则)
+insert_final_newline = true
+
+# ==========================================
+# 2. C# (Unity) 专属代码风格
+# ==========================================
+[*.cs]
+# --- 排序与组织 ---
+# 强制 using 指令的排序：System 命名空间排在最前面
+dotnet_sort_system_directives_first = true
+
+# --- 缩进与大括号 (微软/Unity 经典风格) ---
+# 大括号强制换行 (Allman 风格，Unity 开发者的主流选择)
+csharp_new_line_before_open_brace = all
+# 控制块 (if, while) 即使只有一行，也强制要求写大括号，防范 Agent 偷懒引发的逻辑穿透
+csharp_prefer_braces = true:warning
+
+# --- 语言特性与 Var 的使用 ---
+# 仅在类型明显时使用 var (例如 var list = new List<int>())，其他情况显式声明类型，提高代码可读性
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# --- 命名规范 (强制约束 Agent 不要乱造命名风格) ---
+# 私有字段：使用 _camelCase (Unity 序列化字段常用的规范)
+dotnet_naming_rule.private_fields_should_be_camelCase.severity = suggestion
+dotnet_naming_rule.private_fields_should_be_camelCase.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camelCase.style = camel_case_underscore_prefix
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.camel_case_underscore_prefix.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore_prefix.required_prefix = _
+
+# ==========================================
+# 3. Lua 专属基础规范
+# ==========================================
+[*.lua]
+# Lua 社区更倾向于 4 个空格缩进
+indent_size = 4
+# 保证所有 Lua 脚本的换行符也是严格的 LF
+end_of_line = lf
+
+# ==========================================
+# 4. Unity 序列化文件与配置 (防止 Git 合并灾难)
+# ==========================================
+# Unity 的场景、预制体、元数据等，严格保持一致，防止 Agent 误改格式
+[*.{meta,prefab,unity,asset,mat,controller,anim}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.{asmdef,json}]
+indent_size = 4
+
+# 5. 第三方库代码
+[Assets/3rd Party/**.cs]
+generated_code = true
+
+[Assets/Enviro*/**.cs]
+generated_code = true
+
+[Assets/HyTeKGames/**.cs]
+generated_code = true
+
+[Assets/Plugins/**.cs]
+generated_code = true
+
+[Assets/Tutorial*/**.cs]
+generated_code = true
+
+[Packages/**.cs]
+generated_code = true

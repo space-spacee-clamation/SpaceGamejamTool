@@ -16,7 +16,7 @@ namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.ECS
             GameController.Instance.Subscribe(TestCustomPhase.REFRESH, this);
             gameObject.transform.position=Vector3.zero;
         }
-        
+
         public void OnDestroy()
         {
             GameController.Instance.Unsubscribe(TestCustomPhase.REFRESH, this);
