@@ -12,7 +12,6 @@ namespace Space.TimelineFramework
         int FrameCount { get; }
         float TotalTime { get; }
         bool IsLoop { get; set; }
-        public IEnumerable<ITimeLineFrame> GetAllFrame();
         void ApplyInterpolated(ITimeTick timeTick);
     }
 }

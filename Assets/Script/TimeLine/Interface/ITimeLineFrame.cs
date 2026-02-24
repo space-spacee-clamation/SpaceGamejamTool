@@ -8,6 +8,5 @@ namespace Space.TimelineFramework
     /// </summary>
     public interface ITimeLineFrame
     {
-
     }
 }

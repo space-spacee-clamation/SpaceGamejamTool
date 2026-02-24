@@ -2,6 +2,7 @@ namespace Space.TimelineFramework
 {
     /// <summary>
     /// TimeLine的核心，内部管理回调的时机
+    /// TimeTick 提供时间 帧数和插值时间
     /// </summary>
     public interface ITimeTick
     {

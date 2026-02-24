@@ -5,7 +5,11 @@ namespace Space.TimelineFramework
     /// </summary>
     public interface ITimeLineSource<T> where T : ITimeLineFrame
     {
-        public T CreateFrame(ITimeTick timeTick);
-        public void ApplayFrame(T preFrame, T nextFrame, ITimeTick timeTick);
+        public T CreateFrame();
+        /// <summary>
+        /// 插值应用，因为frame和time不一定是一一对应的
+        /// </summary>
+        /// <param name="timeAlpha">range [0,1]</param>
+        public void ApplayFrame(T preFrame, T nextFrame, float timeAlpha);
     }
 }
