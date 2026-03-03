@@ -3,14 +3,7 @@ using UnityEngine;
 
 namespace Space.TimelineFramework.Sample
 {
-    public struct PositionFrame : ITimeLineFrame
-    {
-        public Vector3 Position;
-    }
-    public struct RotationFrame : ITimeLineFrame
-    {
-        public Quaternion Rotation;
-    }
+
     public class PositionEffect : ITimeLineEffect<PositionFrame>
     {
         private Transform _transform;
@@ -18,11 +11,6 @@ namespace Space.TimelineFramework.Sample
         {
             _transform = transform;
         }
-        public void ApplayFrame(PositionFrame preFrame, PositionFrame nextFrame, float timeAlpha)
-        {
-            _transform.position = Vector3.Lerp(preFrame.Position, nextFrame.Position, timeAlpha);
-        }
-
         public void ApplayFrame(PositionFrame frame)
         {
             _transform.position = frame.Position;
@@ -35,11 +23,6 @@ namespace Space.TimelineFramework.Sample
         {
             _transform = transform;
         }
-        public void ApplayFrame(RotationFrame preFrame, RotationFrame nextFrame, float timeAlpha)
-        {
-            _transform.rotation = Quaternion.Lerp(preFrame.Rotation, nextFrame.Rotation, timeAlpha);
-        }
-
         public void ApplayFrame(RotationFrame frame)
         {
             _transform.rotation = frame.Rotation;

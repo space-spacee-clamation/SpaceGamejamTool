@@ -10,15 +10,10 @@ namespace Space.TimelineFramework
     public interface ITimeLineEffect<T> where T : ITimeLineFrame
     {
         /// <summary>
-        /// 直接应用
+        /// 应用如果需要引用插值的效果应该是传入插值后的frame而不是在系统内插值
         /// </summary>
         /// <param name="frame"></param>
         public void ApplayFrame(T frame);
-        /// <summary>
-        /// 插值应用，因为frame和time不一定是一一对应的
-        /// </summary>
-        /// <param name="timeAlpha">range [0,1]</param>
-        public void ApplayFrame(T preFrame, T nextFrame, float timeAlpha);
     }
     /// <summary>
     ///FrameSource负责获取frame的接口
