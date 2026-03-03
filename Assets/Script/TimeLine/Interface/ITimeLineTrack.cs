@@ -10,8 +10,11 @@ namespace Space.TimelineFramework
     public interface ITimeLineTrack
     {
         int FrameCount { get; }
-        float TotalTime { get; }
         bool IsLoop { get; set; }
-        void ApplyInterpolated(ITimeTick timeTick);
+        void BindeTick(ITimeLineTick timeTick);
+        /// <summary>
+        /// 从已有的Tick去Tick
+        /// </summary>
+        void Tick();
     }
 }

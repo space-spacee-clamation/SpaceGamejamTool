@@ -7,19 +7,24 @@ namespace Space.TimelineFramework
     /// </summary>
     public class TimeLine : ITimeLine
     {
-        protected ITimeTick timeTick;
+        protected ITimeLineTick timeTick;
         protected List<ITimeLineTrack> tracks = new List<ITimeLineTrack>();
-        public TimeLine(ITimeTick timeTick)
+        public TimeLine(ITimeLineTick timeTick)
         {
             this.timeTick = timeTick;
         }
         public void AddTrack(ITimeLineTrack track)
         {
             tracks.Add(track);
+            track.BindeTick(timeTick);
         }
-        public void BindTimer(ITimeTick timer)
+        public void BindTimer(ITimeLineTick timer)
         {
             timeTick = timer;
+            foreach (var track in tracks)
+            {
+                track.BindeTick(timer);
+            }
         }
         public void ClearTrack()
         {
@@ -33,7 +38,7 @@ namespace Space.TimelineFramework
         {
             foreach (var track in tracks)
             {
-                track.ApplyInterpolated(timeTick);
+                track.Tick();
             }
         }
     }

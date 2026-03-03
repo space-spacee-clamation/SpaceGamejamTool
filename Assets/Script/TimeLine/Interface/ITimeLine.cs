@@ -9,6 +9,6 @@ namespace Space.TimelineFramework
         public void AddTrack(ITimeLineTrack track);
         public void RemoveTrack(ITimeLineTrack track);
         public void ClearTrack();
-        public void BindTimer(ITimeTick timer);
+        public void BindTimer(ITimeLineTick timer);
     }
 }

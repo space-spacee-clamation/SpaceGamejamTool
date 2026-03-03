@@ -1,0 +1,2712 @@
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\FramworkFactory.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.PipelineInterface;
+using Space.EventFramework;
+using Space.GlobalInterface.EventInterface;
+using Space.PipelineFramework.Simple;
+namespace Space
+{
+    /// <summary>
+    /// 这个静态的接口工厂可以获得GlobalInterface(标记接口除外(数据相关的接口))对应的接口的实例
+    /// 具体的类型由静态字典定义
+    /// TODO: 暂时是静态工厂，后期考虑转换成可配置的工厂
+    /// </summary>
+    public static class FrameworkFactory
+    {
+        private static Dictionary<Type, Func<object>> factory = new Dictionary<Type, Func<object>>()
+        {
+            {typeof(ITypeEventBus),()=>new TypeEventBus()},
+            {typeof(ITypeEventComponent),()=>new TypeEventSubscribeComponent()},
+            {typeof(IPipelineStageFactory),()=>new DictionaryPipelineStageFactory()},
+        };
+        public static T GetInstance<T>() 
+        {
+            if (factory.ContainsKey(typeof(T)))
+            {
+                return (T)factory[typeof(T)]();
+            }
+            throw new NotSupportedException("获取不被支持的接口");
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\Collections\SortList.cs
+==================================================
+
+using System.Linq;
+namespace Space.Collections
+{
+    using System.Collections.Generic;
+    using UnityEngine;
+
+    [System.Serializable]
+    public class SortedList<TKey,TValue>  where TKey : System.IComparable<TKey> 
+    {
+        [SerializeField] private List<(TKey,TValue)> _items = new List<(TKey,TValue)>();
+        private bool _isDirty = true;
+        private List<TValue> _sortedItems = new List<TValue>();
+        public int Count => _items.Count;
+    
+        /// <summary>
+        /// Add会导致列表变脏
+        /// 下次获取前需要重排
+        /// </summary>
+        public void Add(TKey sourtKey,TValue item)
+        {
+            _items.Add((sourtKey,item));
+            _isDirty = true;
+        }
+        /// <summary>
+        /// remove的行为不会导致变脏
+        /// </summary>
+        public bool Remove(TValue item)
+        {
+            (TKey,TValue) data = _items.Find(data => data.Item2.Equals( item)); 
+            bool sortRemoved=  _sortedItems.Remove(item);
+            bool  removed=_items.Remove(data);
+            return removed;
+        }
+        public void Clear()
+        {
+            _items.Clear();
+            _isDirty = true;
+        }
+        /// <summary>
+        /// 如果是脏的就重排
+        /// 非脏直接返回排好的序列
+        /// </summary>
+        public IReadOnlyList<TValue> GetSorted()
+        {
+            if (_isDirty)
+            {
+                _items.Sort((a,b)=>a.Item1.CompareTo(b.Item1));
+                _sortedItems.Clear();
+                _sortedItems.AddRange( (_items.Select(data => data.Item2)));
+                _isDirty = false;
+            }
+            return _sortedItems.AsReadOnly();
+        }
+
+        public TValue this[int index] => GetSorted()[index];
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\IEventData.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.EventInterface
+{
+    /// <summary>
+    /// 事件数据的标记接口
+    /// 无意义  可以是struck  也可也是class
+    /// </summary>
+    public interface IEventData
+    {
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\String\Interface\IDEventBus.cs
+==================================================
+
+﻿namespace Space.EventFramwork.Serilizable
+{
+    /// <summary>
+    /// 与Type中的实现不同，通过id进行驱动的eventBus
+    /// </summary>
+    
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\GlobalEventBus.cs
+==================================================
+
+using Script;
+using Space.GlobalInterface.EventInterface;
+namespace  Space.EventFramework
+{
+   
+    /// <summary>
+    /// 事件总栈
+    /// </summary>
+    public static class GlobalEventBus
+    {
+        public static ITypeEventBus Instance = FrameworkFactory.GetInstance<ITypeEventBus>();
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\Event\TypeEventBus.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface;
+using Space.GlobalInterface.EventInterface;
+namespace Space.EventFramework
+{
+ public class TypeEventBus : ITypeEventBus
+    {
+        /// <summary>
+        /// 只是方便存储的接口
+        /// </summary>
+        private interface IEventBusSubscriber
+        {
+        }
+        /// <summary>
+        /// 某个事件的分发器
+        ///避免拆装箱
+        /// </summary>
+        private class EventBusSubscriber<T> : IEventBusSubscriber where T : IEventData
+        {
+            GameEventDelegate<T> handlers ;
+            public void Subscribe(GameEventDelegate<T> handler)
+            {
+                handlers+=handler;
+            }
+            public void Unsubscribe(GameEventDelegate<T> handler)
+            {
+                handlers -= handler;
+            }
+            public void Publish(in T eventData)
+            {
+                handlers.Invoke(eventData);
+            }
+        }
+        /// <summary>
+        /// 事件字典
+        /// </summary>
+        private Dictionary<Type, IEventBusSubscriber> _subscribers = new Dictionary<Type, IEventBusSubscriber>();
+        /// <summary>
+        /// 注册订阅
+        /// </summary>
+        /// <param name="handler">执行的事件</param>
+        /// <typeparam name="T"></typeparam>
+        public void Subscribe<T>(GameEventDelegate<T> handler)  where T : IEventData
+        {
+            var eventType = typeof(T);
+            if (!_subscribers.ContainsKey(eventType))
+                _subscribers.Add(eventType ,new EventBusSubscriber<T>());
+            (_subscribers[eventType] as EventBusSubscriber<T>)?.Subscribe( handler);
+        }
+        /// <summary>
+        /// 注销事件
+        /// </summary>
+        public void Unsubscribe<T>(GameEventDelegate<T> handler) where T : IEventData
+        {
+            var eventType = typeof(T);
+            if (!_subscribers.TryGetValue(eventType, out IEventBusSubscriber subscriber))
+                return;
+            (subscriber as EventBusSubscriber<T>)?.Unsubscribe(handler);
+        }
+        /// <summary>
+        /// 发布事件
+        /// </summary>
+        /// <param name="eventData">事件数据 使用in关键字减少复制，同时防止修改</param>
+        /// <typeparam name="T">事件Type</typeparam>
+        public void Publish<T>(in T eventData)  where T : IEventData
+        {
+            var eventType = typeof(T);
+            if (!_subscribers.ContainsKey(eventType))
+                return;
+            (_subscribers[eventType] as EventBusSubscriber<T>)?.Publish(eventData);
+        }
+    }
+    
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\Event\TypeEventSubscribeComponent.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Space.EventFramework
+{
+    
+
+    /// <summary>
+    /// 实体通过这个组件去注册事件而不是直接调用bus
+    /// 完全脱离unity生命周期,如果是生命周期相关请看
+    /// MonoEventSubComponent
+    /// </summary>
+    public  class TypeEventSubscribeComponent  : ITypeEventComponent
+    {
+        /// <summary>
+        /// 存储接口
+        /// 方便存
+        /// </summary>
+        private interface IEventSubscriber
+        {
+            Type EventType { get; }
+            void Clear();
+        }
+        /// <summary>
+        /// 该组件绑定的转发器
+        /// </summary>
+        private ITypeEventBus _typeEventBus;
+        /// <summary>
+        /// 绑定转发器
+        /// </summary>
+        public void BindBus(ITypeEventBus typeEventBus)
+        {
+            this._typeEventBus = typeEventBus;
+        }
+        /// <summary>
+        /// 同事件总栈的处理方法
+        /// 使用内部类进行封装减少开销
+        /// 存储所有这个物体的事件
+        /// 注册和注销都通过这个类进行
+        /// </summary>
+        /// <typeparam name="T">事件类型</typeparam>
+        private class EventSubscriber<T> : IEventSubscriber where T : IEventData
+        {
+            public Type EventType => typeof(T);
+            private GameEventDelegate<T> Handel;
+            /// <summary>
+            /// 事件计数器，类似智能指针，没有事件自动销毁
+            /// </summary>
+            private int _counter=0;
+            /// <summary>
+            /// 都private的内部类了不写接口应该没问题吧😋
+            /// </summary>
+            private TypeEventSubscribeComponent _owner;
+            public EventSubscriber(TypeEventSubscribeComponent owner,GameEventDelegate<T> handler)
+            {
+                _owner = owner;
+                Subscribe( handler);
+            }
+            public void Subscribe(GameEventDelegate<T> handler)
+            {
+                Handel += handler;
+                _counter++;
+                _owner._typeEventBus.Subscribe(handler);
+            }
+            public void UnSubscribe(GameEventDelegate<T> handler)
+            {
+                Handel -= handler;
+                _counter--;
+                _owner._typeEventBus.Unsubscribe(handler);
+                if (_counter <= 0)
+                    _owner.UnregisterEventHandlers(this);
+            }
+            public void Clear()
+            {
+                _owner._typeEventBus.Unsubscribe(Handel);
+                Handel = null;
+                _counter = 0;
+            }
+        }
+        /// <summary>
+        /// 物体的事件
+        /// </summary>
+        private Dictionary<Type,IEventSubscriber> _eventSubscribers=new Dictionary<Type, IEventSubscriber>();
+
+        public void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData
+        {
+            //TODO: 加入debug模式，可以对当个物体的事件出入进行debug
+            if  (!_eventSubscribers.ContainsKey(typeof(T)))
+                _eventSubscribers.Add(typeof(T), new EventSubscriber<T>(this, handler));
+            else
+            {
+               ( _eventSubscribers[typeof(T)]as EventSubscriber<T>)?.Subscribe(handler);
+            }
+        }
+        public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData
+        {
+            if (!_eventSubscribers.ContainsKey(typeof(T)))
+                return;
+            ( _eventSubscribers[typeof(T)]as EventSubscriber<T>)?.UnSubscribe(handler);
+        }
+        private void UnregisterEventHandlers(IEventSubscriber subscriber)
+        {
+            subscriber.Clear();
+        }
+        public void Clear()
+        {
+            foreach (var subscriber in _eventSubscribers.Values)
+            {
+                // 自动解除注册
+                UnregisterEventHandlers(subscriber);
+            }
+        }
+        public void Publish<T>(in T data) where T : IEventData
+        {
+            //TODO: 加入debug模式，可以对当个物体的事件出入进行debug
+            _typeEventBus.Publish(data);
+        }
+    }
+
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\Event\Mono\GameObjectDestroyedEvent.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Space.EventFramework.BaseEvent
+{
+    /// <summary>
+    /// 此事件固定由EventSubscribeComponent在OnDestroy中发布
+    /// 表示物体已经被销毁，而不是去销毁某个物体
+    /// 销毁物体的话在其它逻辑组件里实现
+    /// </summary>
+    public class GameObjectDestroyedEvent : IEventData
+    {
+        /// <summary>
+        /// OnDestroy的物体
+        /// </summary> 
+        public GameObject ObjectInstance;
+        /// <summary>
+        /// 被销毁的时间
+        /// 即时间创建出来的时间
+        /// </summary>
+        public DateTime TimeBeDestroyed;
+        public GameObjectDestroyedEvent(GameObject objectInstance)
+        {
+            ObjectInstance = objectInstance;
+            TimeBeDestroyed = DateTime.Now;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\Event\Mono\MonoEventSubComponent.cs
+==================================================
+
+﻿using Script;
+using Space.EventFramework.BaseEvent;
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Space.EventFramework
+{
+    public class MonoEventSubComponent : MonoBehaviour
+    {
+        ITypeEventComponent _typeEventSubscribeComponent;
+        private void Awake()
+        {
+            _typeEventSubscribeComponent =FrameworkFactory.GetInstance<ITypeEventComponent>();
+            _typeEventSubscribeComponent.BindBus(GlobalEventBus.Instance);
+        }
+        protected void OnEnable()
+        {
+            // 自动绑定生命周期事件
+            _typeEventSubscribeComponent.Subscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
+        }
+        private void OnDestroy()
+        {
+            _typeEventSubscribeComponent.Publish(new GameObjectDestroyedEvent(gameObject) );
+            _typeEventSubscribeComponent.UnSubscribe<GameObjectDestroyedEvent>(OnOwnerDestroyed);
+        }
+        
+        private void OnOwnerDestroyed(in GameObjectDestroyedEvent e)
+        {
+            if (e.ObjectInstance == gameObject)
+            {
+                _typeEventSubscribeComponent.Clear();
+            }
+        }
+        public void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData
+        {
+            _typeEventSubscribeComponent.Subscribe( handler);
+        }
+        public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData
+        {
+            _typeEventSubscribeComponent.UnSubscribe( handler);
+        }
+        public void Clear()
+        {
+            _typeEventSubscribeComponent.Clear();
+        }
+        public void Publish<T>(in T data) where T : IEventData
+        {
+            _typeEventSubscribeComponent.Publish( data);
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\InterFace\Event\ITypeEventBus.cs
+==================================================
+
+﻿using Space.EventFramework;
+namespace Space.GlobalInterface.EventInterface
+{
+    /// <summary>
+    /// 事件收发的接口
+    /// 事件总栈，也可能是某个局部的事件转发的接口
+    /// 一般不直接调用，从component调用
+    /// 其中实现的是具体的事件信息存储，辨别，分发的逻辑
+    /// </summary>
+    public interface ITypeEventBus
+    {
+        public  void Subscribe<T>(GameEventDelegate<T> handler)  where T : IEventData;
+        public  void Unsubscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
+        public  void Publish<T>(in T eventData)  where T : IEventData;
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Base\InterFace\Event\ITypeEventComponent.cs
+==================================================
+
+﻿using Space.EventFramework;
+namespace Space.GlobalInterface.EventInterface
+{
+    /// <summary>
+    /// 使用delegate而不是直接用Action 是为了保证 in关键字
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public delegate void GameEventDelegate<T> (in T data) where T : IEventData;
+    /// <summary>
+    /// 事件定义，取消订阅，广播的组件，作为组件只存储经过这个组件转发的事件
+    /// 通过调用事件总栈也就是 IEventBus来实现真正的事件分发
+    /// </summary>
+    public interface ITypeEventComponent
+    {
+        void BindBus(ITypeEventBus typeEventBus);
+        void Subscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
+        public void UnSubscribe<T>(GameEventDelegate<T> handler) where T : IEventData;
+        public void Clear();
+        public void Publish<T>(in T data) where T : IEventData;
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Excample\UniTest\RedGreen\Car.cs
+==================================================
+
+﻿
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Script.EventFromwork.Excample.UniTest.RedGreen
+{
+    [RequireComponent(typeof(ITypeEventComponent))]
+    public class Car : MonoBehaviour
+    {
+        public void Start()
+        {
+            GetComponent<ITypeEventComponent>().Subscribe<LightChangeEvent>(OnChangeColor);
+        }
+        private void OnChangeColor(in LightChangeEvent data)
+        {
+            if (data.index==0)
+            {
+                Debug.Log($"我是汽车:{gameObject.name}  现在是绿灯");
+            }
+            if (data.index==1)
+            {
+                Debug.Log($"我是汽车:{gameObject.name}  现在是红灯");
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Excample\UniTest\RedGreen\Light.cs
+==================================================
+
+﻿using System.Collections.Generic;
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Script.EventFromwork.Excample.UniTest.RedGreen
+{
+    [RequireComponent(typeof(ITypeEventComponent))]
+    public class Light : MonoBehaviour
+    {
+        private float timer=0.0f;
+        private List<float> cds=new List<float>(){1f,2f};
+        /// <summary>
+        ///  index =0 为绿灯
+        /// index =1 为红灯
+        /// </summary>
+        private int index = 0;
+        private ITypeEventComponent _monoTypeEventSubComponent;
+        private void Start()
+        {
+            _monoTypeEventSubComponent=GetComponent<ITypeEventComponent>();
+        }
+        private void Update()
+        {
+            timer-=Time.deltaTime;
+            if (timer<0)
+            {
+                timer=cds[index];
+                index=(index+1)%2;
+                _monoTypeEventSubComponent.Publish(new LightChangeEvent(index));
+            }
+        }
+    }
+    public class LightChangeEvent : IEventData
+    {
+        /// <summary>
+        ///  index =0 为绿灯
+        /// index =1 为红灯
+        /// </summary>
+        public int index;
+        public LightChangeEvent(int index)
+        {
+            this.index=index;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Excample\UniTest\RedGreen\LightUI.cs
+==================================================
+
+﻿
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+namespace Script.EventFromwork.Excample.UniTest.RedGreen
+{
+    [RequireComponent(typeof(ITypeEventComponent))]
+    public class LightUI : MonoBehaviour
+    {
+        [SerializeField] GameObject greenLight,radLight;
+        public void Start()
+        {
+            GetComponent<ITypeEventComponent>().Subscribe<LightChangeEvent>(ChangeColor);
+        }
+        private void ChangeColor(in LightChangeEvent data)
+        {
+            if (data.index==0)
+            {
+                radLight.SetActive(false);
+                greenLight.SetActive(true);
+            }
+            else
+            {
+                radLight.SetActive(true);
+                greenLight.SetActive(false);
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\EventFramwork\Type\Excample\UniTest\TickTock\SimpleUniEventTest.cs
+==================================================
+
+using System;
+using Space.EventFramework.BaseEvent;
+using Space.GlobalInterface.EventInterface;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Script.EventFromwork.Excample.UniTest.Test
+{
+    [RequireComponent(typeof(ITypeEventComponent))]
+    public class SimpleUniEventTest : MonoBehaviour
+    {
+        private int test_a;
+        private ITypeEventComponent _typeEventSubscribeComponent;
+        public string massage;
+        private void Start()
+        {
+            _typeEventSubscribeComponent=GetComponent<ITypeEventComponent>();
+            _typeEventSubscribeComponent.Subscribe(
+                (in TimerEvent data) => 
+            {
+                if(data.Sender==gameObject)
+                {
+                    Debug.Log ($"{gameObject.name} 收到信息   来自 {data.Sender.name.ToString()} ");
+                }
+            });
+            _typeEventSubscribeComponent.Subscribe(
+                (in GameObjectDestroyedEvent data) =>
+            {
+                if (data.ObjectInstance==gameObject)
+                {
+                    Debug.Log(data.ObjectInstance.name+" :  ______________awsl___________");
+
+                }
+            });
+        }
+        private float timer=0;
+        private void Update()
+        {
+            if (timer<=0)
+            {
+                _typeEventSubscribeComponent.Publish(new TimerEvent(gameObject));
+                timer=Random.Range(1.0f,1.5f);
+            }
+            timer-=Time.deltaTime;
+        }
+    }
+    public struct TimerEvent : IEventData
+    {
+        public GameObject Sender;
+        public DateTime Timer;
+        public TimerEvent(GameObject sender)
+        {
+            Timer = DateTime.Now;
+            Sender = sender;
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Buff\IBuff.cs
+==================================================
+
+﻿namespace Script.GlobalInterface.BuffInterface
+{
+    public interface IBuff
+    {
+        string BuffId { get; }
+        void OnApply(IBuffContext context);
+        void OnRemove(IBuffContext context);
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Buff\IBuffComponent.cs
+==================================================
+
+﻿using System.Collections.Generic;
+namespace Script.GlobalInterface.BuffInterface
+{
+    /// <summary>
+    /// buff组件的接口，基础的一些函数
+    /// 获得位于这个组件内的buff
+    /// 负责存储buff和管理生命周期
+    /// </summary>
+    public interface IBuffComponent
+    {
+        void AddBuff(string buffId);
+        void RemoveBuff(string buffId);
+        void Update(float deltaTime);
+        // 查询接口
+        bool HasBuff(string buffId);
+        IEnumerable<IBuff> GetBuffs();
+        // 扩展接口（小规模返回null）
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Buff\IBuffContext.cs
+==================================================
+
+﻿namespace Script.GlobalInterface.BuffInterface
+{
+    /// <summary>
+    /// buff的上下分，buff通过这个来获得上下文信息
+    /// </summary>
+    public interface IBuffContext
+    {
+        
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\ILifecycleManager\ILifecycleManager.cs
+==================================================
+
+﻿using Space.GlobalInterface.PipelineInterface;
+namespace Space.GlobalInterface.Lifecycle
+{
+    public interface ILifecycleManager
+    {
+        public struct UpdateContext
+        {
+            /// <summary>
+            /// DeltaTime时间 (受缩放影响)
+            /// </summary>
+            public float DeltaTime;
+            /// <summary>
+            /// DeltaTime时间 (不受缩放影响） 
+            /// </summary>
+            public float UnscaledDeltaTime;
+            /// <summary>
+            /// 总帧数
+            /// </summary>
+            public float FrameCount;
+            /// <summary>
+            /// 游戏运行时间(受timescale影响)
+            /// </summary>
+            public float GameTime;
+            /// <summary>
+            /// 真实运行时间 不收缩放影响
+            /// </summary>
+            public float RealtimeSinceStartup;
+        }
+        /// <summary>
+        /// 初始化生命周期系统
+        /// (在外部完成调用)
+        /// </summary>
+        public void InitLifecycle();
+        /// <summary>
+        /// 注册进入生命周期
+        /// </summary>
+        /// <param name="PhaseName">标记Phase</param>
+        /// <param name="lifeSystem">可被注册生命周期的标记接口</param>
+        public void Subscribe(string PhaseName, ILifecycleSubscriber lifeState);
+        /// <summary>
+        /// 取消注册的生命周期组件
+        /// 同时需要提供取消的阶段和内容
+        /// </summary>
+        /// <param name="PhaseName"></param>
+          /// <param name="lifeState"></param>
+        public void Unsubscribe(string PhaseName,ILifecycleSubscriber lifeState);
+        public void AddPhase(ILifecyclePhase lifePhase);
+        public void RemovePhase(ILifecyclePhase lifePhase);
+        /// <summary>
+        /// 外部调用接口
+        /// </summary>
+        public void Update(in UpdateContext context);
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\ILifecycleManager\ILifecyclePhase.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.Lifecycle
+{
+    /// <summary>
+    /// 生命周期组件内的Stage
+    /// 标记接口
+    /// 实际上通过增减这个来实现生命周期的调控
+    /// 但是具体如何调控由子类实现，接口不关心
+    /// </summary>
+    public interface ILifecyclePhase
+    {
+        public string PhaseName { get; }
+
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\ILifecycleManager\ILifecycleSubscriber.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.Lifecycle
+{
+    /// <summary>
+    /// 标记类
+    /// 可被注册的状态
+    /// 具体实现和传参和实现有关
+    /// 无需在接口中实现
+    /// 让类型自己处理类型转换和数据处理
+    /// </summary>
+    public interface ILifecycleSubscriber
+    {
+
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Perpline\IPipeline.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.PipelineInterface
+{
+    /// <summary>
+    /// 数据处理管线
+    /// 或者什么其它管线
+    /// 进行管线的链接和其中数据的传递
+    /// </summary>
+    public interface IPipeline<T> where T : IPipelineContext
+    {
+        /// <summary>
+        /// 增加管道的组件
+        /// 如果没有传入优先级会使用默认优先级
+        /// </summary>
+        public void AddStage(IPipelineStage<T> stage);
+        /// <summary>
+        /// 增加管道的组件
+        /// 如果没有传入优先级会使用默认优先级
+        /// </summary>
+        public void AddStage(IPipelineStage<T> stage,int priority);
+
+        public void RemoveStage(IPipelineStage<T> stage);
+        /// <summary>
+        /// </summary>
+        /// <returns>
+        /// 返回的string 可以是管道运行的情况
+        ///比方说sucsess
+        /// </returns>
+        public void Execute(T context);
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Perpline\IPipelineContext.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.PipelineInterface
+{
+    /// <summary>
+    /// 管线使用的数据接口，标记用暂时无其它作用
+    /// </summary>
+    public interface IPipelineContext
+    {
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Perpline\IPipelineStage.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.PipelineInterface
+{
+    /// <summary>
+    /// 管线的组成部分
+    /// 执行实际的处理逻辑
+    /// 管道的组件强烈要求添加任何引用，如果需要外部的数据，可以使用类似快照的功能，传入值数据
+    /// </summary>
+    public interface IPipelineStage<T> where T : IPipelineContext
+    {
+        /// <summary>
+        /// 默认的优先级
+        /// </summary>
+        public int DefaultPriority { get;  }
+        /// <summary>
+        /// 获取管道组件对应的name
+        /// </summary>
+        public  string StageName { get; }
+        public IPipelineStage<T> SetParams(params object[] parameters);
+        /// <summary>
+        /// 触发管道
+        /// </summary>
+        /// <param name="context">数据上下文</param>
+        public void Execute(T context);
+        public IPipelineStage<T> Clone();
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\GlobalInterface\Perpline\IPipelineStageFactory.cs
+==================================================
+
+﻿namespace Space.GlobalInterface.PipelineInterface
+{
+    /// <summary>
+    /// 管道流水线的工厂
+    /// 通过字符串索引获得IPipelineStage\<TContext\>
+    /// 但是并不是所有的管线都需要经过工厂
+    /// 如果一个管线的流程是较为固定无需过多扩展可以直接静态new 出来
+    /// (例如生命周期管理管线（但是还是推荐去注册）)
+    /// </summary>
+    public interface IPipelineStageFactory
+    {
+        //TODO: 因为注册顺序的原因，需要生命周期管理系统
+        public void SubscribePipeline<TContext>(IPipelineStage<TContext> pipeline,string name) where TContext : IPipelineContext;
+        /// <summary>
+        /// 通过名字索引新建pipelineStage
+        /// </summary>
+        /// <param name="name">名字</param>
+        public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name) where TContext : IPipelineContext;
+        public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name, params object[] pipelineParams) where TContext : IPipelineContext;
+        public bool ContainPipelineStage(string name);
+        public bool ContainPipelineStage<TContext>(string name);
+        public bool TryCreatePipelineStage<TContext>(string name,out  IPipelineStage<TContext> result) where TContext : IPipelineContext;
+        public bool TryCreatePipelineStage<TContext>(string name,out  IPipelineStage<TContext> result, params object[] pipelineParams) where TContext : IPipelineContext;
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\ALifePipelineComponent.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using Space.PipelineFramework.Simple;
+
+namespace Space.LifeControllerFramework.PipelineLifeController
+{
+    /// <summary>
+    /// 初始化参数
+    /// 优先级  名字
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public abstract class ALifePipelineComponent<T> : APipelineStage<T,LifecyclePipelineManager.LifecyclePipelineContext> ,ILifecyclePhase
+     where T : ALifePipelineComponent<T> ,new()
+    {
+        /// <summary>
+        /// 作为管道叫stage
+        /// </summary>
+        public override string StageName => PhaseName;
+        /// <summary>
+        /// 生命周期叫 Phase
+        /// </summary>
+        public  virtual string PhaseName { get; protected set; }
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级  (string)名字
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            DefaultPriority =(int) parameters[0];
+            PhaseName = (string) parameters[1];
+            return this;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\LifecyclePipeline.cs
+==================================================
+
+﻿using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using Space.LifeControllerFramework.PipelineLifeController.PipelineComponent;
+using Space.PipelineFramework.Simple;
+namespace Space.LifeControllerFramework.PipelineLifeController
+{
+    /// <summary>
+    /// LifecyclePipeline
+    /// 基于简单的管道系统实现
+    /// </summary>
+    public class LifecyclePipeline : Pipeline<LifecyclePipelineManager.LifecyclePipelineContext>
+    {
+        /// <summary>
+        /// TODO: 暂时硬实现，后期可以改成工厂
+        /// </summary>
+        public LifecyclePipeline()
+        {
+            AddStage(new ApplySubscriberPipe().SetParams(10000));
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\LifecyclePipelineManager.cs
+==================================================
+
+﻿using System.Collections.Generic;
+using System.Linq;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+namespace Space.LifeControllerFramework.PipelineLifeController
+{
+    public class LifecyclePipelineManager : ILifecycleManager
+    {
+        public class LifecyclePipelineContext : IPipelineContext
+        {
+            private Dictionary<string, List<ILifecycleSubscriber>> subscribers;
+            /// <summary>
+            /// 订阅时维持的名单
+            /// 在这一帧执行后刷新
+            /// </summary>
+            private List<(string, ILifecycleSubscriber)> holdList;
+            /// <summary>
+            /// 释放的list
+            ///  在这一帧执行后刷新
+            /// </summary>
+            private List<(string, ILifecycleSubscriber)> releaseList;
+            /// <summary>
+            /// 置入IGameUpdate的参数
+            /// 直接由外部传入，不进行管理
+            /// </summary>
+            public ILifecycleManager.UpdateContext UpdateContext;
+
+            public LifecyclePipelineContext()
+            {
+                subscribers = new Dictionary<string, List<ILifecycleSubscriber>>();
+                holdList = new List<(string, ILifecycleSubscriber)>();
+                releaseList = new List<(string, ILifecycleSubscriber)>();
+            }
+            public void Subscribe(string name, ILifecycleSubscriber subscriber)
+            {
+                holdList.Add((name, subscriber));
+            }
+            private void ApplySubscriber(string name,ILifecycleSubscriber subscriber)
+            {
+                if (subscribers.TryGetValue(name, out List<ILifecycleSubscriber> subscribersList))
+                {
+                    subscribersList.Add(subscriber);
+                    return;
+                }
+                subscribers.Add(name, new List<ILifecycleSubscriber>() { subscriber });
+            }
+            private void ApplyUnSubscribe(string name,ILifecycleSubscriber subscriber)
+            {
+                if (subscribers.TryGetValue(name, out List<ILifecycleSubscriber> subscribersList))
+                {
+                    subscribersList.Remove(subscriber);
+                    return;
+                }
+            }
+            public void UnSubscribe(string name, ILifecycleSubscriber subscriber)
+            {
+                releaseList.Add((name, subscriber));
+            }
+            public List<ILifecycleSubscriber> GetSubscribers(string PhaseName)
+            {
+                return subscribers.ContainsKey(PhaseName) ? subscribers[PhaseName] : null;
+            }
+            object lockObject = new object();
+            /// <summary>
+            /// 调用该函数会应用添加和删除
+            /// </summary>
+            public void ApplySubscribers()
+            {
+                lock (lockObject)
+                {
+                    foreach (var litm in holdList)
+                    {
+                        ApplySubscriber(litm.Item1, litm.Item2);
+                    }
+                    foreach (var releaseItem in releaseList)
+                    {
+                        ApplyUnSubscribe(releaseItem.Item1, releaseItem.Item2);
+                    }
+                    holdList.Clear();
+                    releaseList.Clear();
+                }
+            }
+        }
+        
+                
+        private LifecyclePipeline pipeline;
+        /// <summary>
+        /// 生命周期管理上下文
+        /// 负责存贮各种数据
+        /// </summary>
+        private LifecyclePipelineContext context;
+        
+        public void InitLifecycle()
+        {
+            pipeline=new LifecyclePipeline();
+            context=new LifecyclePipelineContext();
+        }
+        public void Subscribe(string PhaseName, ILifecycleSubscriber lifeState)
+        {
+            context.Subscribe(PhaseName, lifeState);
+        }
+        public void Unsubscribe(string PhaseName, ILifecycleSubscriber lifeState)
+        {
+            context.UnSubscribe(PhaseName, lifeState);
+        }
+        public void AddPhase(ILifecyclePhase lifePhase)
+        {
+            pipeline.AddStage(lifePhase as IPipelineStage<LifecyclePipelineContext>);
+        }
+        public void RemovePhase(ILifecyclePhase lifePhase)
+        {
+            pipeline.RemoveStage(lifePhase as IPipelineStage<LifecyclePipelineContext>);
+        }
+        public void Update(in ILifecycleManager.UpdateContext context)
+        {
+            this.context.UpdateContext = context;
+            pipeline.Execute(this.context);
+        }
+
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\PipelineComponent\ApplySubscriberPipe.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.PipelineInterface;
+namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
+{
+    public class ApplySubscriberPipe : ALifePipelineComponent<ApplySubscriberPipe>
+    {
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级 
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            DefaultPriority =(int) parameters[0];
+            PhaseName = "ApplySubscriberPipe";
+            return this;
+        }
+        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
+        {
+            context.ApplySubscribers();
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\PipelineComponent\ControllerUpdatePipe.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.Timeline;
+namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
+{
+    
+    
+    
+    /// <summary>
+    /// Update执行管线
+    /// 每帧执行，不进行任何额外操作
+    /// 需要实现IUpdate接口
+    /// </summary>
+    public class ControllerUpdatePipe<T> : ALifePipelineComponent<ControllerUpdatePipe<T>> where T : ILifecycleSubscriber
+    {
+        public interface  IUpdatePipeController
+        {
+            public void Update(IEnumerable<T> updates, ILifecycleManager.UpdateContext ctx);
+        }
+
+        private IUpdatePipeController hander;
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public IUpdatePipeController handeler ;
+            public PipeCreatInfo(int priority, string name, IUpdatePipeController handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+            }
+        }
+
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            hander = parameters.handeler;
+            return this;
+        }
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级  (string)名字 ( Action<T,LifecyclePipelineContext>) 合规的接口处理器
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            hander= parameters[2] as IUpdatePipeController;
+            return base.SetParams(parameters);
+        }
+        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
+        {
+            List<ILifecycleSubscriber> list =   context.GetSubscribers(PhaseName) ;
+            if (list==null) return;
+             hander.Update(list.Select(a=>(T)a ),context.UpdateContext);
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\PipelineComponent\MonoOncePipe.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using UnityEngine;
+namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
+{
+    public class MonoOncePipe<T> : ALifePipelineComponent<MonoOncePipe<T>> where T : ILifecycleSubscriber
+    {
+        private Action<T,LifecyclePipelineManager.LifecyclePipelineContext> handler = null;
+        
+        /// <summary>
+        /// 额外包装，帮助简化创建
+        /// </summary>
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handeler ;
+            /// <param name="priority">优先级</param>
+            /// <param name="name">名字</param>
+            /// <param name="handler">处理器</param>
+            public PipeCreatInfo(int priority, string name, Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+            }
+        }
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            handler = parameters.handeler;
+            return this;
+        }
+        ///接口实现
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级  (string)名字 ( Action<T,LifecyclePipelineContext>) 合规的接口处理器
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            handler=parameters[2] as Action<T,LifecyclePipelineManager.LifecyclePipelineContext>;
+            return base.SetParams(parameters);
+        }
+        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
+        {
+            List<ILifecycleSubscriber> list =   context.GetSubscribers(PhaseName) ;
+            if (list==null) return;
+            foreach (var item in list)
+            {
+                if(item is T update) handler.Invoke(update,context);
+                else
+                {
+                    Debug.Log($" <{item.GetType().FullName}> 尝试被注册进入 MonoOncePipe ,但是其没有实现 {typeof(T)} 接口");
+                }
+                context.UnSubscribe(PhaseName, item);
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\PipelineComponent\MonoTimerPipe.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using Unity.VisualScripting;
+using UnityEngine;
+namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
+{
+    /// <summary>
+    /// 计算器管道
+    /// 只有在时间到的时候会触发
+    /// </summary>
+    public class MonoTimerPipe<T> : ALifePipelineComponent<MonoTimerPipe<T>> where T : ILifecycleSubscriber
+    {
+        /// <summary>
+        /// 使用委托含义更明确一点
+        /// </summary>
+       public delegate void TimerHandler<T>(T subscriber,LifecyclePipelineManager.LifecyclePipelineContext context,float fixedTime) ;
+       private  TimerHandler<T> handler;
+       private float FixedTime;
+        float timerRem = 0;
+        
+        
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public TimerHandler<T> handeler ;
+            public float FixedTime;
+            /// <param name="priority">优先级</param>
+            /// <param name="name">名字</param>
+            /// <param name="handler">处理器</param>
+            public PipeCreatInfo(int priority, string name, float FixedTime, TimerHandler<T> handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+                this.FixedTime = FixedTime;
+            }
+        }
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            handler = parameters.handeler;
+            FixedTime=parameters.FixedTime;
+            return this;
+        }
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级  (string)名字 (float)FixedTime ( TimerHandler<T>) 合规的接口处理器
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            FixedTime =(float) parameters[2] ;
+           if(FixedTime<=0) throw new Exception("FixedTime is 0");
+            handler = (TimerHandler<T>)parameters[3];
+            return base.SetParams(parameters);
+        }
+        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
+        {
+            timerRem-=context.UpdateContext.DeltaTime;
+            while (timerRem<0)
+            {
+                List<ILifecycleSubscriber> resList= context.GetSubscribers(PhaseName);
+                if (resList==null) return;
+
+                foreach (var item in resList)
+                {
+                    if(item is T timer)handler.Invoke(timer,context,FixedTime);
+                    else
+                    {
+                        Debug.Log($" <{item.GetType().FullName}> 尝试被注册进入 MonoTimerPipe ,但是其没有实现 {typeof(T)} 接口");
+                        context.UnSubscribe(PhaseName, item);
+                    }
+                }
+                //不直接置0追回帧
+                timerRem+=FixedTime;
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Base\PipelineComponent\MonoUpdatePipe.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.Lifecycle;
+using Space.GlobalInterface.PipelineInterface;
+using Unity.VisualScripting;
+using UnityEngine;
+namespace Space.LifeControllerFramework.PipelineLifeController.PipelineComponent
+{
+    /// <summary>
+    /// Update执行管线
+    /// 每帧执行，不进行任何额外操作
+    /// 需要实现IUpdate接口
+    /// </summary>
+    public class MonoUpdatePipe<T> : ALifePipelineComponent<MonoUpdatePipe<T>> where T : ILifecycleSubscriber
+    {
+        private Action<T,LifecyclePipelineManager.LifecyclePipelineContext> handler = null;
+
+        public struct PipeCreatInfo
+        {
+            public int Priority;
+            public string PipeName ;
+            public Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handeler ;
+            public PipeCreatInfo(int priority, string name, Action<T, LifecyclePipelineManager.LifecyclePipelineContext> handler)
+            {
+                this.Priority = priority;
+                PipeName = name;
+                this.handeler = handler;
+            }
+        }
+
+        public  IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(in PipeCreatInfo parameters)
+        {
+            DefaultPriority=parameters.Priority;
+            PhaseName = parameters.PipeName;
+            handler = parameters.handeler;
+            return this;
+        }
+        /// <param name="parameters">
+        /// 初始化参数
+        /// (int)优先级  (string)名字 ( Action<T,LifecyclePipelineContext>) 合规的接口处理器
+        /// </param>
+        public override IPipelineStage<LifecyclePipelineManager.LifecyclePipelineContext> SetParams(params object[] parameters)
+        {
+            handler= parameters[2] as Action<T,LifecyclePipelineManager.LifecyclePipelineContext>;
+            return base.SetParams(parameters);
+        }
+        public override void Execute(LifecyclePipelineManager.LifecyclePipelineContext context)
+        {
+            List<ILifecycleSubscriber> list =   context.GetSubscribers(PhaseName) ;
+            if (list==null) return;
+            foreach (var item in list)
+            {
+                if(item is T update)handler.Invoke(update, context);
+                else
+                {
+                    
+                    Debug.Log($" <{item.GetType().FullName}> 尝试被注册进入 MonoUpdatePipe ,但是其没有实现{typeof(T)} 接口");
+                    context.UnSubscribe(PhaseName, item);
+                }
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\CustomLife\GameController.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using Space.LifeControllerFramework.PipelineLifeController.PipelineComponent;
+using UnityEngine;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.CustomLife
+{
+    public class GameController : MonoBehaviour
+    {
+        public static LifecyclePipelineManager Instance;
+        private LifecyclePipelineManager lifecyclePipelineManager;
+        private void Awake()
+        {
+            lifecyclePipelineManager = new LifecyclePipelineManager();
+            lifecyclePipelineManager.InitLifecycle();
+            Instance = lifecyclePipelineManager;
+            //TODO: 可以实现一个类似适配器的东西   目前反正是硬编码无所谓了
+            lifecyclePipelineManager.AddPhase(new MonoOncePipe<IGameStart>().SetParams(
+                    new MonoOncePipe<IGameStart>.PipeCreatInfo(
+                        -2,
+                        TestCustomPhase.START,
+                        (start, context) => {
+                            start.Invoke();
+                        }
+                    ))
+                as ILifecyclePhase);
+            //TODO: 更替创建方式
+            lifecyclePipelineManager.AddPhase(new MonoUpdatePipe<IGameAnimation>().SetParams(
+                    new MonoUpdatePipe<IGameAnimation>.PipeCreatInfo(
+                        51,
+                        TestCustomPhase.ANIMATION,
+                        (a, context) => {
+                            a.AniUpdate(context.UpdateContext);
+                        }))
+                as ILifecyclePhase);
+            lifecyclePipelineManager.AddPhase(new MonoUpdatePipe<IGameWorldUpdate>().SetParams(new MonoUpdatePipe<IGameWorldUpdate>.PipeCreatInfo(
+                52,
+                TestCustomPhase.WORLD,
+                (a, c) => a.WorldUpdate(c.UpdateContext))) as ILifecyclePhase);
+            lifecyclePipelineManager.AddPhase(new MonoTimerPipe<IGamePhysics>().SetParams(new MonoTimerPipe<IGamePhysics>.PipeCreatInfo(
+                54, TestCustomPhase.PHYSICS, 0.02f,
+                (a, c, t) =>
+                    a.PhysicsUpdate(c.UpdateContext, t))) as ILifecyclePhase);
+            lifecyclePipelineManager.AddPhase(new MonoUpdatePipe<IGameBOOOOOM>().SetParams(new MonoUpdatePipe<IGameBOOOOOM>.PipeCreatInfo(
+                5, TestCustomPhase.BOOOOOM,
+                (a, c) => a.Boooom())) as ILifecyclePhase);
+        }
+        private void Update()
+        {
+            lifecyclePipelineManager.Update(new ILifecycleManager.UpdateContext()
+            {
+                DeltaTime = Time.deltaTime,
+                FrameCount = Time.frameCount,
+                GameTime = Time.time,
+                RealtimeSinceStartup = Time.realtimeSinceStartup,
+                UnscaledDeltaTime = Time.unscaledDeltaTime
+            });
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\CustomLife\TestLifePipeline.cs
+==================================================
+
+﻿using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEditor.Timeline.Actions;
+using UnityEngine;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.CustomLife
+{
+    /// <summary>
+    /// 自定义的周期
+    /// 重定义接口是为了显示实现
+    /// 详见TestObj
+    /// </summary>
+    public class TestCustomPhase
+    {
+        public const string ANIMATION = "game_animation";
+        public const string WORLD = "world";
+        public const string PHYSICS  = "physics";
+        public const string START = "start";
+        public const string BOOOOOM = "boooom";
+    }
+    public interface IGameAnimation  : ILifecycleSubscriber
+    {
+        void AniUpdate(in ILifecycleManager.UpdateContext context);
+    }
+    public interface IGameWorldUpdate : ILifecycleSubscriber
+    {
+        void WorldUpdate(in ILifecycleManager.UpdateContext context);
+    }
+    public interface IGamePhysics : ILifecycleSubscriber
+    {
+        void PhysicsUpdate(in ILifecycleManager.UpdateContext context,float deltaTime);
+    }
+    public interface IGameStart : ILifecycleSubscriber
+    {
+       public void Invoke();
+    }
+    public interface IGameBOOOOOM : ILifecycleSubscriber
+    {
+        public void Boooom();
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\CustomLife\TestObj.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.CustomLife
+{
+    public class TestObj : MonoBehaviour ,IGameAnimation,IGamePhysics,IGameStart,IGameBOOOOOM,IGameWorldUpdate
+    {
+        private float speed=0f;
+        private SpriteRenderer spriteRenderer;
+        private void Start()
+        {
+            GameController.Instance.Subscribe(TestCustomPhase.START, this);
+            GameController.Instance.Subscribe(TestCustomPhase.WORLD, this);
+            GameController.Instance.Subscribe(TestCustomPhase.BOOOOOM, this);
+            GameController.Instance.Subscribe(TestCustomPhase.PHYSICS, this);
+            GameController.Instance.Subscribe(TestCustomPhase.ANIMATION, this);
+            spriteRenderer=this.gameObject.GetComponent<SpriteRenderer>();
+        }
+        private int temp = 0;
+        public void AniUpdate(in ILifecycleManager.UpdateContext context)
+        {
+            // Debug.Log($"{gameObject.name} :: AniUpdate DeltaTime  {context.DeltaTime}");
+            Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+            if (direction.magnitude<1f) transform.position = Vector3.zero;
+            gameObject.transform.position+=(Vector3) direction.normalized*(speed*context.DeltaTime);
+        }
+        public void PhysicsUpdate(in ILifecycleManager.UpdateContext context, float deltaTime)
+        {
+            // Debug.Log($"{gameObject.name} :: AniUpdate DeltaTime  {context.DeltaTime}  Physics  {deltaTime}");
+            speed += deltaTime * aspeed * 3;
+        }
+        public void Invoke()
+        {
+            // Debug.LogWarning($"{gameObject.name} :: Start");
+            gameObject.transform.position=Vector3.zero;
+        }
+        private float aspeed = 1.0f;
+        public void Boooom()
+        {
+            // Debug.Log($"{gameObject.name} :: Boooooooom! DeltaTime ");
+            aspeed = Random.Range(-1f, 1f);
+        }
+        public void WorldUpdate(in ILifecycleManager.UpdateContext context)
+        {
+            // Debug.Log($"{gameObject.name} :: WorldUpdate DeltaTime  {context.DeltaTime}");
+            var temp = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f));
+            spriteRenderer.color+=(temp-Color.grey)*Time.deltaTime;
+            
+        }
+        public void OnDestroy()
+        {
+            GameController.Instance.Unsubscribe(TestCustomPhase.START, this);
+            GameController.Instance.Unsubscribe(TestCustomPhase.WORLD, this);
+            GameController.Instance.Unsubscribe(TestCustomPhase.BOOOOOM, this);
+            GameController.Instance.Unsubscribe(TestCustomPhase.PHYSICS, this);
+            GameController.Instance.Unsubscribe(TestCustomPhase.ANIMATION, this);
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\CustomLife\TestObjC.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.CustomLife
+{
+    public class TestObjC : MonoBehaviour 
+    {
+        private float speed=0f;
+        private SpriteRenderer spriteRenderer;
+        private void Start()
+        {
+            spriteRenderer=this.gameObject.GetComponent<SpriteRenderer>();
+            gameObject.transform.position=Vector3.zero;
+        }
+        private int temp = 0;
+        private void Update()
+        {
+            // Debug.Log($"{gameObject.name} :: AniUpdate DeltaTime  {context.DeltaTime}");
+            Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+            if (direction.magnitude<1f) transform.position = Vector3.zero;
+            gameObject.transform.position+= (Vector3)direction.normalized*(speed*Time.deltaTime);
+            aspeed = Random.Range(-1f, 1f);
+            // Debug.Log($"{gameObject.name} :: WorldUpdate DeltaTime  {context.DeltaTime}");
+            var temp = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f));
+            spriteRenderer.color+=(temp-Color.grey)*Time.deltaTime;
+        }
+        private void FixedUpdate()
+        {
+            speed += Time.fixedDeltaTime*aspeed*3;
+        }
+        private float aspeed = 1.0f;
+
+
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\ECS\GameController.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using Space.LifeControllerFramework.PipelineLifeController.PipelineComponent;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.ECS
+{
+
+    public class WorldController : ControllerUpdatePipe<GameWorldUpdate>.IUpdatePipeController
+    {
+
+        public void Update(IEnumerable<GameWorldUpdate> updates, ILifecycleManager.UpdateContext ctx)
+        {
+            foreach (GameWorldUpdate update in updates)
+            {
+                Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - update.gameObjectPos;
+                if (direction.magnitude<1f) update.gameObjectPos = Vector3.zero;
+                update.gameObjectPos+= (Vector3)direction.normalized*(update.speed*Time.deltaTime);
+                update.aspeed = Random.Range(-1f, 1f);
+                // Debug.Log($"{gameObject.name} :: WorldUpdate DeltaTime  {context.DeltaTime}");
+                var temp = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f));
+                update.color+=(temp-Color.grey)*Time.deltaTime;
+                update.speed += Time.deltaTime*update.aspeed*3;
+            }
+            // Debug.Log($"{gameObject.name} :: AniUpdate DeltaTime  {context.DeltaTime}");
+        }
+    }
+    public class GameController : MonoBehaviour
+    {
+        public static LifecyclePipelineManager Instance;
+        private LifecyclePipelineManager lifecyclePipelineManager;
+        private void Awake()
+        {
+            lifecyclePipelineManager = new LifecyclePipelineManager();
+            lifecyclePipelineManager.InitLifecycle();
+            Instance = lifecyclePipelineManager;
+            //TODO: 可以实现一个类似适配器的东西   目前反正是硬编码无所谓了
+            lifecyclePipelineManager.AddPhase(new ControllerUpdatePipe<GameWorldUpdate>().SetParams(
+        new ControllerUpdatePipe<GameWorldUpdate>.PipeCreatInfo(
+        1,
+        TestCustomPhase.WORLD,new WorldController()
+        ))
+        as ILifecyclePhase);
+            lifecyclePipelineManager.AddPhase(new MonoUpdatePipe<IRefresh>().SetParams(
+                    new MonoUpdatePipe<IRefresh>.PipeCreatInfo(
+                        1,
+                        TestCustomPhase.REFRESH,(a,c)=>a.IRefresh()
+                    ))
+                as ILifecyclePhase);
+    }
+        private void Update()
+        {
+            lifecyclePipelineManager.Update(new ILifecycleManager.UpdateContext()
+            {
+                DeltaTime = Time.deltaTime,
+                FrameCount = Time.frameCount,
+                GameTime = Time.time,
+                RealtimeSinceStartup = Time.realtimeSinceStartup,
+                UnscaledDeltaTime = Time.unscaledDeltaTime
+            });
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\ECS\TestLifePipeline.cs
+==================================================
+
+﻿using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEditor.Timeline.Actions;
+using UnityEngine;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.ECS
+{
+    /// <summary>
+    /// 自定义的周期
+    /// 重定义接口是为了显示实现
+    /// 详见TestObj
+    /// </summary>
+    public class TestCustomPhase
+    {
+        public const string WORLD = "world";
+        public const string REFRESH = "refresh";
+    }
+    public class GameWorldUpdate : ILifecycleSubscriber
+    {
+        public float speed = 0;
+        public float aspeed = 1.0f;
+        public Color color;
+        public Vector3 gameObjectPos;
+    }
+    public interface IRefresh : ILifecycleSubscriber
+    {
+        public void IRefresh();
+    }
+
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\ECS\TestObj.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.ECS
+{
+    public class TestObj : MonoBehaviour , IRefresh
+    {
+        private float speed=0f;
+        private SpriteRenderer spriteRenderer;
+        private GameWorldUpdate _worldUpdate;
+        private void Start()
+        {
+            spriteRenderer=this.gameObject.GetComponent<SpriteRenderer>();
+            GameController.Instance.Subscribe(TestCustomPhase.REFRESH, this);
+            gameObject.transform.position=Vector3.zero;
+        }
+
+        public void OnDestroy()
+        {
+            GameController.Instance.Unsubscribe(TestCustomPhase.REFRESH, this);
+        }
+        public void IRefresh()
+        {
+            spriteRenderer.color=_worldUpdate.color;
+            transform.position=_worldUpdate.gameObjectPos;
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\ILifecycleManagerFramework\PipelineLifeController\Test\ECS\TestObjC.cs
+==================================================
+
+﻿using System;
+using Space.GlobalInterface.Lifecycle;
+using Space.LifeControllerFramework.PipelineLifeController;
+using UnityEngine;
+using Random = UnityEngine.Random;
+namespace Space.ILifecycleManagerFramework.PipelineLifeController.Test.ECS
+{
+    public class TestObjC : MonoBehaviour 
+    {
+        private float speed=0f;
+        private SpriteRenderer spriteRenderer;
+        private void Start()
+        {
+            spriteRenderer=this.gameObject.GetComponent<SpriteRenderer>();
+            gameObject.transform.position=Vector3.zero;
+        }
+        private int temp = 0;
+        private float aspeed = 1.0f;
+        private void Update()
+        {
+            // Debug.Log($"{gameObject.name} :: AniUpdate DeltaTime  {context.DeltaTime}");
+            Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+            if (direction.magnitude<1f) transform.position = Vector3.zero;
+            gameObject.transform.position+= (Vector3)direction.normalized*(speed*Time.deltaTime);
+            aspeed = Random.Range(-1f, 1f);
+            // Debug.Log($"{gameObject.name} :: WorldUpdate DeltaTime  {context.DeltaTime}");
+            var temp = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f));
+            spriteRenderer.color+=(temp-Color.grey)*Time.deltaTime;
+            speed += Time.deltaTime*aspeed*3;
+        }
+
+
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\GlobalPipelineStageFactory.cs
+==================================================
+
+﻿using Space.GlobalInterface.PipelineInterface;
+namespace Space.PipelineFramework
+{
+    public static class GlobalPipelineStageFactory
+    {
+        public static IPipelineStageFactory Instance = FrameworkFactory.GetInstance<IPipelineStageFactory>();
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Base\APipelineStage.cs
+==================================================
+
+﻿using Space.GlobalInterface.PipelineInterface;
+namespace Space.PipelineFramework.Simple
+{
+    public abstract class APipelineStage<T,TContext> :  IPipelineStage<TContext> 
+        where T : APipelineStage<T,TContext>,new()
+        where TContext : IPipelineContext
+    {
+        public virtual int DefaultPriority { get; protected set; }
+        /// <summary>
+        /// 考虑到有点时候可能会用
+        /// </summary>
+        public virtual string StageName => typeof(T).Name;
+        public virtual IPipelineStage<TContext> SetParams(params object[] parameters)
+        {
+            return this;
+        }
+        public abstract void Execute(TContext context);
+        public IPipelineStage<TContext> Clone()
+        {
+            return new T();
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Base\Pipeline.cs
+==================================================
+
+﻿using System.Collections;
+using Space.Collections;
+using Space.GlobalInterface.PipelineInterface;
+namespace Space.PipelineFramework.Simple
+{
+    /// <summary>
+    /// 线性的pipeline 
+    /// </summary>
+    public class Pipeline<T> : IPipeline<T>  where T : IPipelineContext
+    {
+        SortedList<int , IPipelineStage<T>> pipelineStages = new SortedList<int , IPipelineStage<T>>();
+        public void AddStage(IPipelineStage<T> stage)
+        {
+            pipelineStages.Add(stage.DefaultPriority, stage);
+        }
+        public void AddStage(IPipelineStage<T> stage, int priority)
+        {
+            pipelineStages.Add(priority, stage);
+        }
+        public void RemoveStage(IPipelineStage<T> stage)
+        {
+            pipelineStages.Remove(stage);
+        }
+        public void Execute(T context)
+        {
+            foreach (var pipelineStage in pipelineStages.GetSorted())
+            {
+                pipelineStage.Execute(context);
+            }
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Base\PipelineContext.cs
+==================================================
+
+﻿using System.Collections.Generic;
+using Space.GlobalInterface.PipelineInterface;
+namespace Space.PipelineFramework.Simple
+{
+
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Base\Factory\DictionaryPipelineStageFactory.cs
+==================================================
+
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
+using Space.GlobalInterface.PipelineInterface;
+using Space.Utility;
+namespace Space.PipelineFramework.Simple
+{
+    /// <summary>
+    /// 不使用属性，通过两个字符串配置的工厂
+    ///所有工厂都是用全局初始化的数据，可能导致管道会需要提前配置，这个算是dictionary的工厂缺点
+    /// TODO: 怎么解决配置的问题
+    /// </summary>
+    public class DictionaryPipelineStageFactory : IPipelineStageFactory
+    {
+        /// <summary>
+        /// 子工厂 标记接口
+        /// </summary>
+        private interface IsubPipelineFactory
+        {
+            public bool Contain(string name);
+        }
+        /// <summary>
+        /// 实际上的子工厂
+        /// 通过子工厂创造实例
+        /// 避免类型信息丢失
+        /// 只在工厂内部使用
+        /// </summary>
+        private class SubPipelineFactory<TContext> : IsubPipelineFactory where TContext : IPipelineContext
+        {
+            
+            Dictionary<string,  IPipelineStage<TContext>> pipelines = new Dictionary<string,  IPipelineStage<TContext>>();
+            public IPipelineStage<TContext> CreatePipelineStage(string name)
+            {
+                if (pipelines.TryGetValue(name,out IPipelineStage<TContext> value))
+                {
+                    var pipelineStage = value.Clone();
+                    return pipelineStage;
+                }
+                throw new NotImplementedException($"尝试获取管线 <{typeof(TContext)}> {name} 时失效  未找到管线");
+
+            }
+            public IPipelineStage<TContext> CreatePipelineStage(string name, params object[] pipelineParams)
+            {
+                if (pipelines.TryGetValue(name,out IPipelineStage<TContext> value))
+                {
+                    var pipelineStage = value.Clone();
+                    pipelineStage.SetParams(pipelineParams);
+                    return pipelineStage;
+                }
+                throw new NotImplementedException($"尝试获取管线 <{typeof(TContext)}> {name} 时失效  未找到管线");
+            }
+            public void SubscribePipeline(IPipelineStage<TContext> pipeline, string name)
+            {
+                if (pipelines.ContainsKey(name))
+                {
+                    throw new NotSupportedException($"注册重复管线 <{typeof(TContext)}> {name}  失效，已经注册");
+                }
+                pipelines.Add(name, pipeline);
+            }
+            public bool Contain(string name)
+            {
+                throw new NotImplementedException();
+            }
+        }
+        /// <summary>
+        /// Type是管线计算变量的Type
+        /// </summary>
+        private Dictionary<Type, IsubPipelineFactory> subPipelines = new Dictionary<Type, IsubPipelineFactory>();
+        public void SubscribePipeline<TContext>(IPipelineStage<TContext> pipeline, string name) where TContext : IPipelineContext
+        {
+            IsubPipelineFactory subPipelineFactory = null;
+            if (!subPipelines.TryGetValue(typeof(TContext), out subPipelineFactory))
+            {
+                subPipelineFactory = new SubPipelineFactory<TContext>();
+                subPipelines.Add(typeof(TContext), subPipelineFactory);
+            }
+            (subPipelineFactory as  SubPipelineFactory<TContext>).SubscribePipeline(pipeline, name);
+        }
+        public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                return (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name);
+            }
+            throw new NotSupportedException($" <{typeof(TContext)}> 类型未被注册");
+        }
+        public IPipelineStage<TContext> CreatePipelineStage<TContext>(string name, params object[] pipelineParams) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                return (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name, pipelineParams);
+            }
+            throw new NotSupportedException($" <{typeof(TContext)}> 类型未被注册");
+        }
+        public bool ContainPipelineStage(string name)
+        {
+            foreach (var subPipeline in subPipelines.Values)
+            {
+                if (subPipeline.Contain(name)) return true;
+            }
+            return false;
+        }
+        public bool ContainPipelineStage<TContext>(string name)
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory value) &&value.Contain(name)) return true;
+            return false;
+        }
+        public bool TryCreatePipelineStage<TContext>(string name, out IPipelineStage<TContext> result) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                result= (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name);
+                return true;
+            }
+            result= null;
+            return  false;
+        }
+        public bool TryCreatePipelineStage<TContext>(string name, out IPipelineStage<TContext> result, params object[] pipelineParams) where TContext : IPipelineContext
+        {
+            if (subPipelines.TryGetValue(typeof(TContext),out IsubPipelineFactory subPipelineFactory))
+            {
+                result= (subPipelineFactory as  SubPipelineFactory<TContext>).CreatePipelineStage(name, pipelineParams);
+                return true;
+            }
+            result= null;
+            return  false;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\DamagePipeLine\DamagePipeLine.cs
+==================================================
+
+﻿// using System.Collections.Generic;
+// using Space.GlobalInterface.PipelineInterface;
+// namespace Space.PipelineFramework.Simple.Example.DamagePipeLine
+// {
+//
+//     /// <summary>
+//     /// 封装了一层具有默认管线的管道
+//     /// ShareData{
+//     ///   "Damage" int  伤害，由伤害计算写入
+//     ///   "DamageCastor" Player 伤害产生者
+//     ///   "DamageGetter" Player 受到伤害的人
+//     ///   "DamageTags" Ienumrator string的可迭代对象 伤害的tags
+//     ///   "DamageBooomRate" float 暴击的概率
+//     ///   ""
+//     /// }
+//     /// 基础伤害计算(写入伤害数值)----->应用伤害类型（如物理、火焰）----->暴击判断(伤害翻倍)------>
+//     /// 伤害抗性(免疫)------>伤害抗性(格挡)------>伤害产生(造成伤害)
+//     /// </summary>
+//     public class DamagePipeLine : IPipeline
+//     {
+//         IPipeline pipeline;
+//         public DamagePipeLine()
+//         {
+//             var factory = GlobalPipelineStageFactory.Instance;
+//             pipeline = FrameworkFactory.GetInstance<IPipeline>();
+//             pipeline.AddStage(factory.CreatePipelineStage(""));
+//         }
+//         public void AddStage(IPipelineStage stage)
+//         {
+//             pipeline.AddStage(stage);
+//         }
+//         public void AddStage(IPipelineStage stage, int priority)
+//         {
+//             pipeline.AddStage(stage, priority);
+//         }
+//         public void RemoveStage(IPipelineStage stage)
+//         {
+//             pipeline.RemoveStage(stage);
+//         }
+//         public void Execute(IPipelineContext context)
+//         {
+//             pipeline.Execute(context);   
+//         }
+//     }
+// }
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\DamagePipeLine\Player.cs
+==================================================
+
+﻿using UnityEngine;
+namespace Space.PipelineFramework.Simple.Example.DamagePipeLine
+{
+    /// <summary>
+    /// 随便写一点了比较潦草
+    /// </summary>
+    public class Player
+    {
+        public int Level=1;
+        /// <summary>
+        /// 直接简单实现了
+        /// </summary>
+        public int GetSkillDamage()
+        {
+            return (Level + Random.Range(1,10)) * 3;
+        }
+        public void costDamage(int damage)
+        {
+            Debug.Log($"被造成了: {damage}伤害");
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\DamagePipeLine\Stage\ApplyDamageTypeStep.cs
+==================================================
+
+﻿// using System.Collections.Generic;
+// using Space.GlobalInterface.PipelineInterface;
+// namespace Space.PipelineFramework.Simple.Example.DamagePipeLine
+// {
+//     /// <summary>
+//     /// 添加火焰修正(玩家身上着火了(?))
+//     /// 也可也是从技能上拿到属性
+//     /// 看自己设计了
+//     /// </summary>
+//     public class ApplyFireDamageTypeStep : APipelineStage<BaseDamageCalculate>
+//     {
+//         public override void Execute(IPipelineContext context)
+//         {
+//
+//
+//         }
+//     }
+// }
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\DamagePipeLine\Stage\BaseDamageCalculate.cs
+==================================================
+
+﻿// using Space.GlobalInterface.PipelineInterface;
+// namespace Space.PipelineFramework.Simple.Example.DamagePipeLine
+// {
+//     /// <summary>
+//     /// 基础伤害管道
+//     /// </summary>
+//     public class BaseDamageCalculate : APipelineStage<BaseDamageCalculate>
+//     {
+//         public override void Execute(IPipelineContext context)
+//         {
+//             Player player = context.GetSharedData<Player>("DamageCaster");
+//             int damage= player.GetSkillDamage();
+//             context.SetSharedData("Damage", damage);
+//         }
+//     }
+// }
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\TestPipeline\MonoPipelineTest.cs
+==================================================
+
+﻿// using System;
+// using Space.GlobalInterface.PipelineInterface;
+// using UnityEngine;
+// namespace Space.PipelineFramework.Simple.Example.Test
+// {
+//     public class MonoPipelineTest : MonoBehaviour
+//     {
+//         private IPipeline pipeline;
+//         private IPipelineContext pipelineContext;
+//         private void Awake()
+//         {
+//             IPipelineFactory factory = GlobalPipelineStageFactory.Instance;
+//             pipeline = FrameworkFactory.GetInstance<IPipeline>();
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestParamsPipeline",new TestParamsPipeline.TestParamsPipelineCreateInfo()
+//             {
+//                 AddedMassage = "我是第一个信息，我的优先度是-1",
+//                 DefaultPriority = -1
+//             }));
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestParamsPipeline",new TestParamsPipeline.TestParamsPipelineCreateInfo()
+//             {
+//                 AddedMassage = "我是第一个信息，我的优先度是1",
+//                 DefaultPriority = 1
+//             }));
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+//             pipeline.AddStage(factory.CreatePipelineStage("Example/Test/TestStage"));
+//             pipelineContext = FrameworkFactory.GetInstance<IPipelineContext>();
+//         }
+//
+//
+//         private float timer = 0;
+//         private int count = 0;
+//         private void Update()
+//         {
+//             timer-=Time.deltaTime;
+//             if (timer<0)
+//             {
+//                 pipelineContext.SetSharedData("TestCount", $"{count++}次管道测试");
+//                 pipeline.Execute(pipelineContext);
+//                 timer = 3f;
+//                 //一般情况下这里可以保存一下需要的数据
+//                 //使用后记得清除上下文
+//                 pipelineContext.Clear();
+//             }
+//         }
+//     }
+// }
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\TestPipeline\TestPipelineStage.cs
+==================================================
+
+﻿using Space.GlobalInterface.PipelineInterface;
+using UnityEngine;
+namespace Space.PipelineFramework.Simple.Example.Test
+{
+
+    public class TestContest : IPipelineContext
+    {
+        public string massage;
+        public  int index;
+    }
+    public class TestPipelineStage : APipelineStage<TestPipelineStage,TestContest>
+    {
+        public int Priority {
+            get;
+        }
+        private int index=0;
+        public override void Execute(TestContest context)
+        {
+            index=context.index;
+            string res = context.massage;
+            Debug.Log($"{index}: {res}");
+            index++;
+            context.index = index;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\PipelineFramework\Simple\Example\TestPipeline\TestPrameterPipeline.cs
+==================================================
+
+﻿using Space.GlobalInterface.PipelineInterface;
+using UnityEngine;
+namespace Space.PipelineFramework.Simple.Example.Test
+{
+    /// <summary>
+    /// 此处用了Attribute 可以通过ReflectionPipeLineFactory调用
+    /// 也可也用DictionaryFactory 看喜好选择
+    /// </summary>
+    public class TestParamsPipeline : APipelineStage<TestParamsPipeline,TestContest>
+    {
+        private string addedMassage= "";
+        public class TestParamsPipelineCreateInfo
+        {
+            public int DefaultPriority;
+            public string AddedMassage;
+        }
+        public override IPipelineStage<TestContest> SetParams(params object[] parameters)
+        {
+            TestParamsPipelineCreateInfo info= parameters[0]  as TestParamsPipelineCreateInfo;
+            this.DefaultPriority= info.DefaultPriority;
+            addedMassage = info.AddedMassage;
+            return base.SetParams(parameters);
+        }
+        private int index=0;
+        public override void Execute(TestContest context)
+        {
+            index=context.index;
+            string res= context.massage;
+            Debug.Log($"{index}: {res}  ---- {addedMassage}");
+            context.index++;
+        }
+    }
+}
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\TimeLine.cs
+==================================================
+
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Base\TimeLine.cs
+==================================================
+
+using System.Collections.Generic;
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// 时间轴的核心类，提供时间轴的基本功能
+    /// </summary>
+    public class TimeLine : ITimeLine
+    {
+        protected ITimeTick timeTick;
+        protected List<ITimeLineTrack> tracks = new List<ITimeLineTrack>();
+        public TimeLine(ITimeTick timeTick)
+        {
+            this.timeTick = timeTick;
+        }
+        public void AddTrack(ITimeLineTrack track)
+        {
+            tracks.Add(track);
+        }
+        public void BindTimer(ITimeTick timer)
+        {
+            timeTick = timer;
+        }
+        public void ClearTrack()
+        {
+            tracks.Clear();
+        }
+        public void RemoveTrack(ITimeLineTrack track)
+        {
+            tracks.Remove(track);
+        }
+        public void Tick()
+        {
+            foreach (var track in tracks)
+            {
+                track.ApplyInterpolated(timeTick);
+            }
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Base\TimeLineTrack.cs
+==================================================
+
+using System.Collections.Generic;
+
+namespace Space.TimelineFramework
+{
+    public class TimeLineTrack<T> : ITimeLineTrack where T : ITimeLineFrame
+    {
+        public TimeLineTrack(ITimeLineFrameSource<T> timeLineFrameSource)
+        {
+            _timeLineFrameSource = timeLineFrameSource;
+        }
+        public int FrameCount => _timeLineFrameSource.FrameCount;
+        private ITimeLineFrameSource<T> _timeLineFrameSource;
+        public bool IsLoop { get; set; } = false;
+        public void ApplyInterpolated(ITimeTick timeTick)
+        {
+
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeLine.cs
+==================================================
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// timeline的轨道提供者，timeline的核心概念之一，timeline由多个track组成，track由多个frame组成
+    /// track负责管理frame的生命周期，frame负责执行具体的逻辑
+    /// </summary>
+    public interface ITimeLine
+    {
+        public void AddTrack(ITimeLineTrack track);
+        public void RemoveTrack(ITimeLineTrack track);
+        public void ClearTrack();
+        public void BindTimer(ITimeTick timer);
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeLineFrame.cs
+==================================================
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// 此处的frame是抽象的概念而不是具体的帧，frame是timeline的最小单位
+    /// frame应该是一些单纯数据类
+    /// 通过source进行生成 同时通过source进行写入
+    /// 生命周期由Track进行管理
+    /// </summary>
+    public interface ITimeLineFrame
+    {
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeLineSource.cs
+==================================================
+
+using System.Collections.Generic;
+using Space.TimelineFramework.Sample;
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// Effect负责应用frame的接口
+    /// 是timeline的效果器
+    /// </summary>
+    public interface ITimeLineEffect<T> where T : ITimeLineFrame
+    {
+        /// <summary>
+        /// 插值应用，因为frame和time不一定是一一对应的
+        /// </summary>
+        /// <param name="timeAlpha">range [0,1]</param>
+        public void ApplayFrame(T preFrame, T nextFrame, float timeAlpha);
+    }
+    /// <summary>
+    ///FrameSource负责获取frame的接口
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public interface ITimeLineFrameSource<T> where T : ITimeLineFrame
+    {
+        /// <summary>
+        /// 创建frame
+        /// 可能会创建多个frame，frame和time不一定是一一对应的
+        /// </summary>
+        public IList<T> GetFrames();
+        public IList<T> GetTickFrame(int tickform, int tickto);
+        public int FrameCount { get; }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeLineTrack.cs
+==================================================
+
+using System.Collections.Generic;
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// timeline的轨道抽象， timeline的核心概念之一，timeline由多个track组成，track由多个frame组成
+    /// track负责管理frame的生命周期，frame负责执行具体的逻辑
+    /// 这个接口是向外部调用使用的，不需要存数据类型是因为数据不会向外流出
+    /// </summary>
+    public interface ITimeLineTrack
+    {
+        int FrameCount { get; }
+        bool IsLoop { get; set; }
+        void ApplyInterpolated(ITimeTick timeTick);
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeLineTrackProvider.cs
+==================================================
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// 负责提供Track的接口，类似工厂
+    /// </summary>
+    public interface ITimeLineTrackProvider
+    {
+        public void CreateTrack(in ITimeLine timeLine);
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Interface\ITimeTick.cs
+==================================================
+
+namespace Space.TimelineFramework
+{
+    /// <summary>
+    /// TimeLine的核心，内部管理回调的时机
+    /// TimeTick 提供时间 帧数和插值时间
+    /// </summary>
+    public interface ITimeTick
+    {
+        public int GetCurrentTick();
+        public float GetTime();
+        public void ResetTick();
+        public void ResetTickTo(int tick, float time);
+        public float TickScale { get; set; }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Sample\Effect\TransformEffect.cs
+==================================================
+
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Space.TimelineFramework.Sample
+{
+    public struct PositionFrame : ITimeLineFrame
+    {
+        public Vector3 Position;
+
+    }
+    public struct RotationFrame : ITimeLineFrame
+    {
+        public Quaternion Rotation;
+    }
+    public class PositionEffect : ITimeLineEffect<PositionFrame>
+    {
+        private Transform _transform;
+        public PositionEffect(Transform transform)
+        {
+            _transform = transform;
+        }
+        public void ApplayFrame(PositionFrame preFrame, PositionFrame nextFrame, float timeAlpha)
+        {
+            _transform.position = Vector3.Lerp(preFrame.Position, nextFrame.Position, timeAlpha);
+        }
+
+    }
+    public class RotationEffect : ITimeLineEffect<RotationFrame>
+    {
+        private Transform _transform;
+        public RotationEffect(Transform transform)
+        {
+            _transform = transform;
+        }
+        public void ApplayFrame(RotationFrame preFrame, RotationFrame nextFrame, float timeAlpha)
+        {
+            _transform.rotation = Quaternion.Lerp(preFrame.Rotation, nextFrame.Rotation, timeAlpha);
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Sample\TestPlayerTimeline\TestPlayer.cs
+==================================================
+
+namespace Space.TimelineFramework.Sample
+{
+
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\TimeLine\Sample\TimeTick\UnityUpdateTimeTick.cs
+==================================================
+
+using UnityEngine;
+
+namespace Space.TimelineFramework.Sample
+{
+    /// <summary>
+    /// 通过Unity的Update来驱动时间轴的更新
+    /// 适合于需要和Unity的生命周期紧密结合的时间轴
+    /// 例如动画时间轴，游戏事件时间轴等
+    /// </summary>
+    public class UnityUpdateTimeTick : MonoBehaviour, ITimeTick
+    {
+        private int currentTick = 0;
+        private float time = 0f;
+        public float TickScale { get; set; } = 1f;
+        public int GetCurrentTick()
+        {
+            return currentTick;
+        }
+        public float GetTime()
+        {
+            return time;
+        }
+        public void ResetTick()
+        {
+            currentTick = 0;
+            time = 0f;
+        }
+        public void ResetTickTo(int tick, float time)
+        {
+            currentTick = tick;
+            this.time = time;
+        }
+        private int frameBuffer = 0;
+        /// <summary>
+        /// 通过Update来驱动时间轴的更新
+        /// </summary>
+        void Update()
+        {
+            time += Time.deltaTime * TickScale;
+            frameBuffer++;
+            if (frameBuffer >= 1 / TickScale)
+            {
+                currentTick++;
+                frameBuffer = 0;
+            }
+        }
+    }
+}
+
+
+==================================================
+FILE: D:\SpaceGamejamTool\Assets\Script\Utility\ReflectionUtility.cs
+==================================================
+
+﻿//Create By 腾讯元宝 
+
+namespace Space.Utility
+{
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+
+
+
+public static class ReflectionUtility
+{
+    // 核心原理：泛型约束保证类型安全，延迟加载减少不必要的Assembly扫描
+    public static IEnumerable<TAttribute> GetAttributesFromAssembly<TAttribute>(Assembly assembly)
+        where TAttribute : Attribute
+    {
+        if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+        
+        // 单次Assembly扫描复用设计（复杂度转移点）
+        return assembly.GetTypes()
+            .SelectMany(type => type.GetCustomAttributes<TAttribute>(false))
+            .Distinct();
+    }
+
+    // 原理：分离加载策略与核心逻辑，支持未来扩展不同加载机制
+    public static IEnumerable<TAttribute> GetAttributesFromAssemblies<TAttribute>(IEnumerable<string> assemblyNames)
+        where TAttribute : Attribute
+    {
+        var loadedAssemblies = AssemblyLoader.LoadAssemblies(assemblyNames);
+        return loadedAssemblies
+            .SelectMany(assembly => GetAttributesFromAssembly<TAttribute>(assembly));
+    }
+
+    // 原理：提供快捷入口封装固定模式，保持API简洁
+    public static IEnumerable<TAttribute> GetAttributesFromExecutingAssembly<TAttribute>()
+        where TAttribute : Attribute
+    {
+        return GetAttributesFromAssembly<TAttribute>(Assembly.GetExecutingAssembly());
+    }
+    
+    /// <summary>
+    /// 创建指定类型的实例
+    /// </summary>
+    /// <param name="type">要实例化的类型</param>
+    /// <param name="args">构造函数参数</param>
+    /// <returns>创建的对象实例</returns>
+    public static object CreateInstance(Type type, params object[] args)
+    {
+        if (type == null) throw new ArgumentNullException(nameof(type));
+        // 处理无参数情况
+        if (args == null || args.Length == 0)
+        {
+            return Activator.CreateInstance(type);
+        }
+        // 尝试直接激活
+        try
+        {
+            return Activator.CreateInstance(type, args);
+        }
+        catch (MissingMethodException)
+        {
+            throw new NotSupportedException();
+        }
+    }
+}
+
+// 分离加载器实现（核心与策略解耦）
+internal static class AssemblyLoader
+{
+    // 原理：封装可变部分，为未来平台特殊加载逻辑保留扩展点
+    public static IEnumerable<Assembly> LoadAssemblies(IEnumerable<string> assemblyNames)
+    {
+        foreach (var name in assemblyNames)
+        {
+            Assembly assembly = null;
+            try
+            {
+                // 隔离平台依赖代码：此处可替换为Assembly.LoadFrom等跨平台方案
+                assembly = Assembly.Load(name);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to load assembly '{name}'", ex);
+            }
+            
+            if (assembly != null) yield return assembly;
+        }
+    }
+}
+}
